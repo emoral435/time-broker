@@ -3,12 +3,17 @@
   <a href="https://github.com/emoral435/time-broker/actions/workflows/release.yml"
     ><img
       alt="Release"
-      src="https://img.shields.io/github/actions/workflow/status/emoral435/no-mistakes/release.yml?style=flat-square&label=release"
+      src="https://img.shields.io/github/actions/workflow/status/emoral435/time-broker/release.yml?style=flat-square&label=release"
   /></a>
   <a href="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=flat-square"
     ><img
       alt="Platform"
       src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=flat-square"
+  /></a>
+  <a href="https://emoral435.github.io/time-broker/"
+    ><img
+      alt="Docs"
+      src="https://img.shields.io/badge/docs-github.io-blue?style=flat-square"
   /></a>
 </p>
 
@@ -23,7 +28,7 @@
 List of calendar providers supported:
 * Google Calendar
 
-Full documentation: # TODO
+Full documentation: https://emoral435.github.io/time-broker/
 
 ## How it works
 
