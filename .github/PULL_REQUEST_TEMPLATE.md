@@ -19,15 +19,6 @@
 
 <!-- Link to the GitHub issue, if any. e.g. Closes #42 -->
 
-## Type of Change
-
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Refactor / style
-- [ ] CI / build
-- [ ] Other (describe):
-
 ## Testing
 
 <!--
@@ -44,12 +35,6 @@
 - [ ] Docs updated in `docs/content/`
 - [ ] `hugo --minify` builds without errors
 - [ ] README updated (if applicable)
-
-## Checklist
-
-- [ ] Code follows existing conventions (no comments, no emoji, concise)
-- [ ] No new dependencies added (or justified and added to go.mod)
-- [ ] Commits are clean and logically separated
 
 ## Screenshots (if UI change)
 
