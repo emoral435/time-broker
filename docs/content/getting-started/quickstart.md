@@ -13,16 +13,18 @@ This installs `time-broker` and the `tb` shorthand to your PATH.
 
 ## 2. Set up
 
+Upon first run of your broker, you will be presented with a wizard to configure your brokers settings.
 ```shell
-time-broker init
+time-broker
 ```
 
 Follow the interactive wizard to choose your calendar provider and week start day.
 
 ## 3. Check your config
 
+The following will show you what settings are possible to configure.
 ```shell
-time-broker config
+time-broker config list
 ```
 
 ## 4. View available commands
