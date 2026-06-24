@@ -8,3 +8,17 @@ This aims to expedite the process of going back and forth in your emails to see 
 ## Specs
 
 Do not be verbose, outside of the documentation and outside of when a user asks for help. Otherwise, try to be concise, and ensure that what gets output to end users is short and sweet while maintaining necessary content.
+
+## PR Generation
+
+When creating a PR, generate the description using the template at
+.github/PULL_REQUEST_TEMPLATE.md. Use `git diff main...HEAD` to understand the
+changes.
+
+Style rules:
+- Be concise, 2-3 sentences max per section
+- No emojis, no em dashes
+- Intent: one sentence describing the problem or goal
+- Summary of Changes: bullet list of key changes
+- Testing: describe what was tested
+- Documentation: note if docs were updated
