@@ -1,0 +1,40 @@
+baseURL: https://emoral435.github.io/time-broker/
+title: time-broker
+enableInlineShortcodes: true
+enableRobotsTXT: true
+enableEmoji: false
+
+defaultContentLanguage: en
+defaultContentLanguageInSubdir: false
+
+disableKinds:
+  - taxonomy
+  - term
+
+module:
+  imports:
+    - path: github.com/imfing/hextra
+
+menu:
+  main:
+    - name: Documentation
+      pageRef: /
+      weight: 1
+    - name: GitHub
+      url: https://github.com/emoral435/time-broker
+      weight: 10
+
+params:
+  description: Get back your time. Use a managed broker, hooked up to your calendar provider.
+  displayUpdatedDate: true
+  editURL:
+    enable: true
+    base: https://github.com/emoral435/time-broker/edit/main/docs/content
+
+  navbar:
+    displayTitle: true
+    displayLogo: false
+
+  footer:
+    displayCopyright: true
+    displayPoweredBy: true
