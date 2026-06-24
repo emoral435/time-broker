@@ -14,6 +14,19 @@ import (
 
 var Version = "dev"
 
+func init() {
+	if Version != "dev" {
+		return
+	}
+	data, err := os.ReadFile("VERSION")
+	if err != nil {
+		return
+	}
+	if v := strings.TrimSpace(string(data)); v != "" {
+		Version = v
+	}
+}
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
