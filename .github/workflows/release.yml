@@ -46,9 +46,7 @@ jobs:
       - name: Build release binaries
         run: |
           VERSION="$(cat VERSION)"
-          COMMIT="${{ github.sha }}"
-          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          LDFLAGS="-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
+          LDFLAGS="-X main.Version=${VERSION}"
           mkdir -p dist
           for os in darwin linux; do
             for arch in amd64 arm64; do

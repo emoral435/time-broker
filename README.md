@@ -1,4 +1,4 @@
-<h1 align="center"><code>time broker</code></h1>
+<h1 align="center"><code>time-broker</code></h1>
 <p align="center">
   <a href="https://github.com/emoral435/time-broker/actions/workflows/release.yml"
     ><img
@@ -23,7 +23,11 @@
   <img src="https://raw.githubusercontent.com/emoral435/time-broker/main/demo.gif" alt="time-broker demo" width="800" />
 </p>
 
-# TODO quick brief definition of what time-broker does
+## Overview
+time-broker is a TUI based command line tool that connects to popular online-calendar providers to help you manage when you are free, when you have upcoming events, and more.
+
+time-broker was made so that you can easily chat with others and see when you are free to meet. No need to use when2meet when you can directly use a broker to manager when you are free, all at the reach of your terminal.
+
 
 List of calendar providers supported:
 * Google Calendar
