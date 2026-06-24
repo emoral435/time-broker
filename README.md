@@ -35,8 +35,10 @@ Full documentation: https://emoral435.github.io/time-broker/
 ## Install
 
 ```sh
-curl -fsSL (TODO) | sh
+curl -fsSL https://raw.githubusercontent.com/emoral435/time-broker/main/install.sh | sh
 ```
+
+After installing, use `time-broker` or the shorthand `tb`.
 ## Quick Start
 
 ## Web Frontend

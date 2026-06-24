@@ -3,6 +3,17 @@ title: Installation
 weight: 1
 ---
 
+## Using curl
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/emoral435/time-broker/main/install.sh | sh
+```
+
+This downloads the latest release for your OS and architecture, installs it to
+`~/.time-broker/bin/`, and creates a `tb` shorthand symlink.
+
+After installing, use `time-broker` or `tb` from your terminal.
+
 ## From Source
 
 ```shell
@@ -18,9 +29,3 @@ platform:
 - macOS (arm64 / amd64)
 - Linux (arm64 / amd64)
 - Windows (arm64 / amd64)
-
-## Using curl (future)
-
-```shell
-curl -fsSL https://github.com/emoral435/time-broker/install.sh | sh
-```
