@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Validate tag matches VERSION
+        run: |
+          expected="v$(cat VERSION)"
+          if [ "$expected" != "${{ github.ref_name }}" ]; then
+            echo "error: tag ${{ github.ref_name }} does not match VERSION ($expected)"
+            exit 1
+          fi
+
+      - name: Sync frontend version
+        run: |
+          VERSION="$(cat VERSION)"
+          jq --arg v "$VERSION" '.version = $v' frontend/package.json > tmp.json && mv tmp.json frontend/package.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Build release binaries
+        run: |
+          VERSION="$(cat VERSION)"
+          COMMIT="${{ github.sha }}"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
+          mkdir -p dist
+          for os in darwin linux; do
+            for arch in amd64 arm64; do
+              target="time-broker-${os}-${arch}"
+              GOOS=${os} GOARCH=${arch} go build -ldflags "${LDFLAGS}" -o "dist/${target}" ./cmd/time-broker/
+              tar czf "dist/${target}.tar.gz" -C dist "${target}"
+            done
+          done
+          GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o "dist/time-broker-windows-amd64.exe" ./cmd/time-broker/
+          tar czf "dist/time-broker-windows-amd64.tar.gz" -C dist "time-broker-windows-amd64.exe"
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
