@@ -8,7 +8,7 @@ weight: 1
 View or change configuration.
 
 ```shell
-time-broker config
+time-broker config [help] [init] [list]
 ```
 
 ## get
@@ -21,14 +21,6 @@ Show the help message listing all available commands.
 
 ```shell
 time-broker help
-```
-
-## init
-
-Run the setup wizard to configure time-broker for first use.
-
-```shell
-time-broker init
 ```
 
 ## schedule
