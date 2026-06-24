@@ -3,48 +3,64 @@ title: Commands
 weight: 1
 ---
 
-## auth
+## config
 
-Authenticate with a calendar provider.
-
-```shell
-time-broker auth --provider <name>
-```
-
-**Flags:**
-
-| Flag       | Description                          |
-| ---------- | ------------------------------------ |
-| `--provider` | Calendar provider (e.g. `google`) |
-
-## free
-
-Show free timeslots for a given day.
+View or change configuration.
 
 ```shell
-time-broker free --date <date> [--duration <minutes>]
+time-broker config
 ```
 
-**Flags:**
+## get
 
-| Flag         | Description                            |
-| ------------ | -------------------------------------- |
-| `--date`     | Date to check (YYYY-MM-DD)             |
-| `--duration` | Minimum slot duration in minutes       |
+(not yet implemented)
 
-## book
+## help
 
-Book a timeslot on your calendar.
+Show the help message listing all available commands.
 
 ```shell
-time-broker book --date <date> --start <time> --end <time> [--title <string>]
+time-broker help
 ```
 
-**Flags:**
+## init
 
-| Flag     | Description                            |
-| -------- | -------------------------------------- |
-| `--date` | Date for the event (YYYY-MM-DD)        |
-| `--start`| Start time (HH:MM)                     |
-| `--end`  | End time (HH:MM)                       |
-| `--title`| Event title                            |
+Run the setup wizard to configure time-broker for first use.
+
+```shell
+time-broker init
+```
+
+## schedule
+
+Schedule a meeting or view availability.
+
+```shell
+time-broker schedule
+```
+
+## update
+
+Check for updates.
+
+```shell
+time-broker update
+```
+
+## version
+
+Print version information.
+
+```shell
+time-broker version
+```
+
+## Shorthand
+
+After installation, `tb` is available as a shorthand for `time-broker`:
+
+```shell
+tb help
+tb version
+tb schedule
+```

@@ -3,26 +3,30 @@ title: Quick Start
 weight: 2
 ---
 
-## 1. Authenticate with your calendar provider
+## 1. Install
 
 ```shell
-time-broker auth --provider google
+curl -fsSL https://raw.githubusercontent.com/emoral435/time-broker/main/install.sh | sh
 ```
 
-This opens a browser window to authorize time-broker to read your calendar.
+This installs `time-broker` and the `tb` shorthand to your PATH.
 
-## 2. View your availability
+## 2. Set up
 
 ```shell
-time-broker free --date 2026-07-01
+time-broker init
 ```
 
-Shows your free timeslots for the given day.
+Follow the interactive wizard to choose your calendar provider and week start day.
 
-## 3. Book a timeslot
+## 3. Check your config
 
 ```shell
-time-broker book --date 2026-07-01 --start 14:00 --end 15:00
+time-broker config
 ```
 
-Creates a busy event for the specified time range.
+## 4. View available commands
+
+```shell
+time-broker help
+```
