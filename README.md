@@ -39,7 +39,19 @@ curl -fsSL (TODO) | sh
 ```
 ## Quick Start
 
-## Development
+## Web Frontend
+
+Alongside the TUI, time-broker includes a web frontend located in `frontend/` for a more graphical interface to view and manage your calendar.
+
+```sh
+# Start the dev server on localhost:3000
+make frontend-dev
+
+# Build for production
+make frontend-build
+```
+
+The dev server proxies `/api` requests to the Go backend at `localhost:8080`. Configure the target in `frontend/vite.config.ts`.
 
 ## Star History
 
