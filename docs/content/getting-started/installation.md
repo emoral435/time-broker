@@ -14,12 +14,6 @@ This downloads the latest release for your OS and architecture, installs it to
 
 After installing, use `time-broker` or `tb` from your terminal.
 
-## From Source
-
-```shell
-go install github.com/emoral435/time-broker@latest
-```
-
 ## From a Release
 
 Download the latest binary from the

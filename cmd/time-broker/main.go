@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/charmbracelet/huh"
 
 	"github.com/emoral435/time-broker/internal/config"
+	"github.com/emoral435/time-broker/internal/provider/google"
 )
 
 var Version = "dev"
@@ -34,8 +34,8 @@ func main() {
 			runHelp()
 		case "version":
 			runVersion()
-		case "init":
-			runInit()
+		case "auth":
+			runAuth()
 		case "config":
 			runConfig(os.Args[1:])
 		case "schedule", "update", "get":
@@ -54,10 +54,10 @@ func runHelp() {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprint(w, "Usage: time-broker <command>\n\n")
 	fmt.Fprint(w, "Commands:\n")
+	fmt.Fprint(w, "  auth\tAuthenticate with your calendar provider\n")
 	fmt.Fprint(w, "  config\tView or change configuration (run 'config help' for subcommands)\n")
 	fmt.Fprint(w, "  get\t(not yet implemented)\n")
 	fmt.Fprint(w, "  help\tShow this help message\n")
-	fmt.Fprint(w, "  init\tSet up time-broker for first use\n")
 	fmt.Fprint(w, "  schedule\tSchedule a meeting or view availability\n")
 	fmt.Fprint(w, "  update\tCheck for updates\n")
 	fmt.Fprint(w, "  version\tPrint version information\n\n")
@@ -67,6 +67,34 @@ func runHelp() {
 
 func runVersion() {
 	fmt.Printf("time-broker %s\n", Version)
+}
+
+func runAuth() {
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if !config.IsConfigured(cfg) {
+		fmt.Println("No configuration found. Run 'time-broker config init' first.")
+		os.Exit(1)
+	}
+
+	var authErr error
+	switch cfg.Provider {
+	case "google":
+		g := google.New()
+		authErr = g.Auth()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown provider: %s\n", cfg.Provider)
+		os.Exit(1)
+	}
+
+	if authErr != nil {
+		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", authErr)
+		os.Exit(1)
+	}
+	fmt.Println("Authenticated successfully.")
 }
 
 func runInit() {
@@ -127,16 +155,29 @@ func runConfigList() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("provider\tCalendar service to use")
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Key\tDescription\tCurrent Value\n")
+	fmt.Fprint(w, "---\t-----------\t-------------\n")
+	fmt.Fprintf(w, "provider\tCalendar service to use")
 	if cfg.Provider != "" {
-		fmt.Printf(" (currently: %s)", cfg.Provider)
+		fmt.Fprintf(w, "\t%s", cfg.Provider)
+	} else {
+		fmt.Fprint(w, "\t(not set)")
 	}
-	fmt.Println()
-	fmt.Printf("week_start_day\tFirst day of your calendar week")
+	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "week_start_day\tFirst day of your calendar week")
 	if cfg.WeekStartDay != "" {
-		fmt.Printf(" (currently: %s)", cfg.WeekStartDay)
+		fmt.Fprintf(w, "\t%s", cfg.WeekStartDay)
+	} else {
+		fmt.Fprint(w, "\t(not set)")
 	}
-	fmt.Println()
+	fmt.Fprint(w, "\n")
+	w.Flush()
+
+	if !config.IsConfigured(cfg) {
+		fmt.Println("\nRun 'time-broker config init' to set up configuration.")
+	}
 }
 
 func ensureConfigured() (*config.Config, error) {
@@ -176,7 +217,6 @@ func runWithConfig(cmd string) {
 func runSetupWizard() (*config.Config, error) {
 	var provider string
 	var weekStartDay string
-	var setupAlias bool
 
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -194,22 +234,10 @@ func runSetupWizard() (*config.Config, error) {
 				).
 				Value(&weekStartDay),
 		),
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Create 'tb' alias?").
-				Description("Add 'alias tb=time-broker' to your shell config so you can use 'tb' as a shorthand.").
-				Value(&setupAlias),
-		),
 	).WithTheme(huh.ThemeCharm())
 
 	if err := form.Run(); err != nil {
 		return nil, fmt.Errorf("setup wizard: %w", err)
-	}
-
-	if setupAlias {
-		if err := addShellAlias(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not create alias: %v\n", err)
-		}
 	}
 
 	return &config.Config{
@@ -218,50 +246,4 @@ func runSetupWizard() (*config.Config, error) {
 	}, nil
 }
 
-func addShellAlias() error {
-	shell := os.Getenv("SHELL")
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
 
-	var rcFile string
-	var aliasLine string
-
-	switch {
-	case strings.HasSuffix(shell, "/zsh"):
-		rcFile = filepath.Join(home, ".zshrc")
-		aliasLine = "alias tb='time-broker'"
-	case strings.HasSuffix(shell, "/bash"):
-		rcFile = filepath.Join(home, ".bashrc")
-		aliasLine = "alias tb='time-broker'"
-	case strings.HasSuffix(shell, "/fish"):
-		rcFile = filepath.Join(home, ".config", "fish", "config.fish")
-		aliasLine = "alias tb=time-broker"
-	default:
-		fmt.Println("To create the 'tb' alias manually, add to your shell config:")
-		fmt.Println("  alias tb='time-broker'")
-		return nil
-	}
-
-	if data, err := os.ReadFile(rcFile); err == nil {
-		if strings.Contains(string(data), "alias tb=") {
-			fmt.Println("Alias 'tb' already configured in", rcFile)
-			return nil
-		}
-	}
-
-	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return fmt.Errorf("open %s: %w", rcFile, err)
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString("\n# time-broker alias\n" + aliasLine + "\n"); err != nil {
-		return err
-	}
-
-	fmt.Printf("Alias 'tb' added to %s\n", rcFile)
-	fmt.Println("Run 'source " + rcFile + "' or restart your terminal to use 'tb'.")
-	return nil
-}
