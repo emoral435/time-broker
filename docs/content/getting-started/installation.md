@@ -29,3 +29,10 @@ platform:
 - macOS (arm64 / amd64)
 - Linux (arm64 / amd64)
 - Windows (arm64 / amd64)
+
+## Uninstall
+
+To uninstall, simply just remove where the binary is located, typically at your `$HOME/.time-broker/bin` folder:
+```sh
+rm -rf "($HOME)/.time-broker"
+```

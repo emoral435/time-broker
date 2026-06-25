@@ -34,15 +34,29 @@ List of calendar providers supported:
 
 Full documentation: https://emoral435.github.io/time-broker/
 
-## How it works
-
 ## Install
 
+To install, you can use the following command:
 ```sh
 curl -fsSL https://raw.githubusercontent.com/emoral435/time-broker/main/install.sh | sh
 ```
 
-After installing, use `time-broker` or the shorthand `tb`.
+Or, alternatively, you can install the binary directly using Go:
+```sh
+go install "github.com/emoral435/time-broker/@latest"
+```
+
+After installing, use `time-broker` or the shorthand `tb` to view the setup wizard.
+
+## Uninstall
+
+To uninstall, simply just remove where the binary is located, typically at your `$HOME/.time-broker/bin` folder:
+```sh
+rm -rf "($HOME)/.time-broker"
+```
+
+## How it works
+
 ## Quick Start
 
 ## Web Frontend
