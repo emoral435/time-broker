@@ -50,9 +50,7 @@ Then open http://localhost:1313.
 3. Merge the PR to `main`.
 
 That's it. Merging a change to `VERSION` on `main` triggers the
-[tag-on-version-change](https://github.com/emoral435/time-broker/actions/workflows/tag-on-version-change.yml)
-workflow, which creates a `v$(VERSION)` tag. The tag then triggers the
 [release](https://github.com/emoral435/time-broker/actions/workflows/release.yml)
-workflow, which builds binaries for all platforms, generates checksums, syncs
-the frontend version, and creates a GitHub Release with auto-generated release
-notes.
+workflow, which creates the tag, builds binaries for all platforms, generates
+checksums, syncs the frontend version, and creates a GitHub Release with
+auto-generated release notes.
