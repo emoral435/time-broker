@@ -1,10 +1,21 @@
+ifneq (,$(wildcard .env))
+include .env
+endif
+
 VERSION := $(shell cat VERSION)
-LDFLAGS := -ldflags "-X main.Version=$(VERSION)"
+XFLAGS := -X main.Version=$(VERSION)
+
+ifdef GOOGLE_CLIENT_ID
+XFLAGS += -X github.com/emoral435/time-broker/internal/provider/google.ClientID=$(GOOGLE_CLIENT_ID)
+endif
+ifdef GOOGLE_CLIENT_SECRET
+XFLAGS += -X github.com/emoral435/time-broker/internal/provider/google.ClientSecret=$(GOOGLE_CLIENT_SECRET)
+endif
 
 .PHONY: build frontend-dev frontend-build run
 
 build:
-	go build $(LDFLAGS) -o bin/time-broker ./cmd/time-broker/
+	go build -ldflags "$(XFLAGS)" -o bin/time-broker ./cmd/time-broker/
 
 frontend-dev:
 	cd frontend && npm run dev

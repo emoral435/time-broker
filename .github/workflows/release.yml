@@ -49,6 +49,12 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.v }}"
           LDFLAGS="-X main.Version=${VERSION#v}"
+          if [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ]; then
+            LDFLAGS="$LDFLAGS -X 'github.com/emoral435/time-broker/internal/provider/google.ClientID=${{ secrets.GOOGLE_CLIENT_ID }}'"
+          fi
+          if [ -n "${{ secrets.GOOGLE_CLIENT_SECRET }}" ]; then
+            LDFLAGS="$LDFLAGS -X 'github.com/emoral435/time-broker/internal/provider/google.ClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}'"
+          fi
           mkdir -p dist
           for os in darwin linux; do
             for arch in amd64 arm64; do

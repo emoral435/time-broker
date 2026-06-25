@@ -34,16 +34,9 @@ esac
 VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
 
 if [ -z "$VERSION" ]; then
-  echo "No release found. Installing from source via 'go install'..."
-  if command -v go >/dev/null 2>&1; then
-    go install "github.com/${REPO}@latest"
-    echo "Installed. Ensure $(go env GOPATH)/bin is in your PATH."
-    exit 0
-  else
-    echo "Go is not installed and no pre-built release is available."
-    echo "Install Go from https://go.dev/dl/ and try again."
-    exit 1
-  fi
+  echo "Error: could not find a release for your platform."
+  echo "Download from https://github.com/emoral435/time-broker/releases"
+  exit 1
 fi
 
 FILENAME="time-broker-${VERSION}-${OS}-${ARCH}.tar.gz"

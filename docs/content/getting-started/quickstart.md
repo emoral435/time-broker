@@ -9,16 +9,13 @@ weight: 2
 curl -fsSL https://raw.githubusercontent.com/emoral435/time-broker/main/install.sh | sh
 ```
 
-This installs `time-broker` and the `tb` shorthand to your PATH.
-
 ## 2. Set up
 
-Upon first run of your broker, you will be presented with a wizard to configure your brokers settings.
-```shell
-time-broker
-```
+Run the setup wizard to configure your calendar provider and week start day.
 
-Follow the interactive wizard to choose your calendar provider and week start day.
+```shell
+time-broker config init
+```
 
 ## 3. Check your config
 

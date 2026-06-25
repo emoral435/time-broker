@@ -41,11 +41,6 @@ To install, you can use the following command:
 curl -fsSL https://raw.githubusercontent.com/emoral435/time-broker/main/install.sh | sh
 ```
 
-Or, alternatively, you can install the binary directly using Go:
-```sh
-go install "github.com/emoral435/time-broker/@latest"
-```
-
 After installing, use `time-broker` or the shorthand `tb` to view the setup wizard.
 
 ## Uninstall
