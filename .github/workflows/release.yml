@@ -47,18 +47,18 @@ jobs:
 
       - name: Build release binaries
         run: |
-          VERSION="$(cat VERSION)"
-          LDFLAGS="-X main.Version=${VERSION}"
+          VERSION="${{ steps.version.outputs.v }}"
+          LDFLAGS="-X main.Version=${VERSION#v}"
           mkdir -p dist
           for os in darwin linux; do
             for arch in amd64 arm64; do
-              target="time-broker-${os}-${arch}"
-              GOOS=${os} GOARCH=${arch} go build -ldflags "${LDFLAGS}" -o "dist/${target}" ./cmd/time-broker/
-              tar czf "dist/${target}.tar.gz" -C dist "${target}"
+              target="time-broker-${VERSION}-${os}-${arch}"
+              GOOS=${os} GOARCH=${arch} go build -ldflags "${LDFLAGS}" -o "dist/time-broker" ./cmd/time-broker/
+              tar czf "dist/${target}.tar.gz" -C dist "time-broker"
             done
           done
-          GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o "dist/time-broker-windows-amd64.exe" ./cmd/time-broker/
-          tar czf "dist/time-broker-windows-amd64.tar.gz" -C dist "time-broker-windows-amd64.exe"
+          GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o "dist/time-broker.exe" ./cmd/time-broker/
+          tar czf "dist/time-broker-${VERSION}-windows-amd64.tar.gz" -C dist "time-broker.exe"
 
       - name: Generate checksums
         run: |
