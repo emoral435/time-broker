@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths: [VERSION]
 
 permissions:
   contents: write
@@ -24,18 +24,20 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Validate tag matches VERSION
+      - name: Read version
+        id: version
+        run: echo "v=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Check tag does not already exist
         run: |
-          expected="v$(cat VERSION)"
-          if [ "$expected" != "${{ github.ref_name }}" ]; then
-            echo "error: tag ${{ github.ref_name }} does not match VERSION ($expected)"
+          if git rev-parse "v$(cat VERSION)" >/dev/null 2>&1; then
+            echo "error: tag v$(cat VERSION) already exists"
             exit 1
           fi
 
       - name: Sync frontend version
         run: |
-          VERSION="$(cat VERSION)"
-          jq --arg v "$VERSION" '.version = $v' frontend/package.json > tmp.json && mv tmp.json frontend/package.json
+          jq --arg v "$(cat VERSION)" '.version = $v' frontend/package.json > tmp.json && mv tmp.json frontend/package.json
 
       - name: Build frontend
         run: |
@@ -66,5 +68,6 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.v }}
           files: dist/*
           generate_release_notes: true
