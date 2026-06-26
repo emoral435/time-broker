@@ -1,0 +1,51 @@
+version: "2"
+
+run:
+  timeout: 2m
+  go: "1.25"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - goconst
+    - govet
+    - ineffassign
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-naming
+        - name: error-return
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/emoral435/time-broker)
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

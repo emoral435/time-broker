@@ -245,5 +245,3 @@ func runSetupWizard() (*config.Config, error) {
 		WeekStartDay: weekStartDay,
 	}, nil
 }
-
-
