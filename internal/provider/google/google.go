@@ -28,13 +28,13 @@ var (
 
 const redirectPort = ":8085"
 
-type GoogleProvider struct {
+type Provider struct {
 	config  *oauth2.Config
 	token   *oauth2.Token
 	service *calendar.Service
 }
 
-func New() *GoogleProvider {
+func New() *Provider {
 	id := ClientID
 	secret := ClientSecret
 	if id == "" {
@@ -52,7 +52,7 @@ func New() *GoogleProvider {
 		Endpoint:     google.Endpoint,
 	}
 
-	p := &GoogleProvider{config: cfg}
+	p := &Provider{config: cfg}
 
 	tok, err := config.LoadToken()
 	if err == nil && tok != nil {
@@ -63,17 +63,17 @@ func New() *GoogleProvider {
 	return p
 }
 
-func (g *GoogleProvider) Name() string {
+func (g *Provider) Name() string {
 	return "google"
 }
 
-func (g *GoogleProvider) Auth() error {
+func (g *Provider) Auth() error {
 	if g.token != nil && g.token.Valid() {
 		return nil
 	}
 
 	if g.config.ClientID == "" || g.config.ClientSecret == "" {
-		return fmt.Errorf("Google OAuth credentials not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables, or inject them at build time")
+		return fmt.Errorf("google OAuth credentials not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables, or inject them at build time")
 	}
 
 	codeChan := make(chan string)
@@ -96,7 +96,12 @@ func (g *GoogleProvider) Auth() error {
 	}
 
 	server := &http.Server{Handler: mux}
-	go server.Serve(listener)
+	go func() {
+		err := server.Serve(listener)
+		if err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
 	defer server.Close()
 
 	state := randomState()
@@ -126,21 +131,21 @@ func (g *GoogleProvider) Auth() error {
 	}
 }
 
-func (g *GoogleProvider) FreeSlots(day time.Time, minDuration time.Duration) ([]provider.Slot, error) {
+func (g *Provider) FreeSlots(day time.Time, minDuration time.Duration) ([]provider.Slot, error) {
 	if g.service == nil {
 		return nil, fmt.Errorf("not authenticated; run 'time-broker auth'")
 	}
 	return nil, fmt.Errorf("free: not yet implemented")
 }
 
-func (g *GoogleProvider) Book(title string, start, end time.Time) error {
+func (g *Provider) Book(title string, start, end time.Time) error {
 	if g.service == nil {
 		return fmt.Errorf("not authenticated; run 'time-broker auth'")
 	}
 	return fmt.Errorf("book: not yet implemented")
 }
 
-func (g *GoogleProvider) createService() {
+func (g *Provider) createService() {
 	ctx := context.Background()
 	ts := g.config.TokenSource(ctx, g.token)
 	saving := &saveTokenSource{

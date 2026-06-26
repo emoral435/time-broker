@@ -13,7 +13,7 @@ type Config struct {
 	WeekStartDay string `toml:"week_start_day"`
 }
 
-func ConfigPath() (string, error) {
+func Path() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("get home dir: %w", err)
@@ -31,7 +31,7 @@ func EnsureDir() error {
 }
 
 func Load() (*Config, error) {
-	path, err := ConfigPath()
+	path, err := Path()
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func Load() (*Config, error) {
 }
 
 func Save(c *Config) error {
-	path, err := ConfigPath()
+	path, err := Path()
 	if err != nil {
 		return err
 	}

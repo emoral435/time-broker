@@ -12,7 +12,7 @@ ifdef GOOGLE_CLIENT_SECRET
 XFLAGS += -X github.com/emoral435/time-broker/internal/provider/google.ClientSecret=$(GOOGLE_CLIENT_SECRET)
 endif
 
-.PHONY: build frontend-dev frontend-build run
+.PHONY: build frontend-dev frontend-build run lint lint-fix
 
 build:
 	go build -ldflags "$(XFLAGS)" -o bin/time-broker ./cmd/time-broker/
@@ -25,3 +25,9 @@ frontend-build:
 
 run:
 	./bin/time-broker
+
+lint:
+	golangci-lint run ./...
+
+lint-fix:
+	golangci-lint run --fix ./...
