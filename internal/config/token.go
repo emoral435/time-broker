@@ -18,6 +18,10 @@ func TokenPath() (string, error) {
 }
 
 func SaveToken(tok *oauth2.Token) error {
+	if err := EnsureDir(); err != nil {
+		return err
+	}
+
 	path, err := TokenPath()
 	if err != nil {
 		return err

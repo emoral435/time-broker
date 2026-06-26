@@ -15,6 +15,10 @@ import (
 var Version = "dev"
 
 func init() {
+	loadVersionFromFile()
+}
+
+func loadVersionFromFile() {
 	if Version != "dev" {
 		return
 	}
@@ -28,26 +32,35 @@ func init() {
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "help":
-			runHelp()
-		case "version":
-			runVersion()
-		case "auth":
-			runAuth()
-		case "config":
-			runConfig(os.Args[1:])
-		case "schedule", "update", "get":
-			runWithConfig(os.Args[1])
-		default:
-			fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
-			runHelp()
-			os.Exit(1)
-		}
-		return
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
-	runHelp()
+}
+
+func run(args []string) error {
+	if len(args) == 0 {
+		runHelp()
+		return nil
+	}
+
+	switch args[0] {
+	case "help":
+		runHelp()
+	case "version":
+		runVersion()
+	case "auth":
+		return runAuth()
+	case "config":
+		return runConfig(args[1:])
+	case "schedule", "update", "get":
+		return runWithConfig(args[0])
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", args[0])
+		runHelp()
+		return fmt.Errorf("unknown command: %s", args[0])
+	}
+	return nil
 }
 
 func runHelp() {
@@ -69,73 +82,64 @@ func runVersion() {
 	fmt.Printf("time-broker %s\n", Version)
 }
 
-func runAuth() {
+func runAuth() error {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 	if !config.IsConfigured(cfg) {
-		fmt.Println("No configuration found. Run 'time-broker config init' first.")
-		os.Exit(1)
+		return fmt.Errorf("no configuration found. Run 'time-broker config init' first")
 	}
 
-	var authErr error
 	switch cfg.Provider {
 	case "google":
 		g := google.New()
-		authErr = g.Auth()
+		if err := g.Auth(); err != nil {
+			return fmt.Errorf("authentication failed: %w", err)
+		}
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown provider: %s\n", cfg.Provider)
-		os.Exit(1)
-	}
-
-	if authErr != nil {
-		fmt.Fprintf(os.Stderr, "Authentication failed: %v\n", authErr)
-		os.Exit(1)
+		return fmt.Errorf("unknown provider: %s", cfg.Provider)
 	}
 	fmt.Println("Authenticated successfully.")
+	return nil
 }
 
-func runInit() {
+func runInit() error {
 	cfg, err := runSetupWizard()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 	if err := config.Save(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Error saving config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error saving config: %w", err)
 	}
 	fmt.Println("Configuration saved to ~/.time-broker/config")
+	return nil
 }
 
-func runConfig(args []string) {
-	if len(args) == 1 {
+func runConfig(args []string) error {
+	if len(args) == 0 {
 		cfg, err := config.Load()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 		if !config.IsConfigured(cfg) {
-			fmt.Println("No configuration found. Run 'time-broker config init' to set up.")
-			return
+			return fmt.Errorf("No configuration found. Run 'time-broker config init' to set up.")
 		}
-		fmt.Printf("provider: %s\nweek_start_day: %s\n", cfg.Provider, cfg.WeekStartDay)
-		return
+		runConfigList()
 	}
 
-	switch args[1] {
+	switch args[0] {
 	case "help":
 		runConfigHelp()
+		return nil
 	case "init":
-		runInit()
+		return runInit()
 	case "list":
-		runConfigList()
+		return runConfigList()
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown config subcommand: %s\n\n", args[1])
+		fmt.Fprintf(os.Stderr, "Unknown config subcommand: %s\n\n", args[0])
 		runConfigHelp()
-		os.Exit(1)
+		return fmt.Errorf("unknown config subcommand: %s", args[0])
 	}
 }
 
@@ -149,11 +153,10 @@ func runConfigHelp() {
 	w.Flush()
 }
 
-func runConfigList() {
+func runConfigList() error {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -178,6 +181,7 @@ func runConfigList() {
 	if !config.IsConfigured(cfg) {
 		fmt.Println("\nRun 'time-broker config init' to set up configuration.")
 	}
+	return nil
 }
 
 func ensureConfigured() (*config.Config, error) {
@@ -198,11 +202,10 @@ func ensureConfigured() (*config.Config, error) {
 	return cfg, nil
 }
 
-func runWithConfig(cmd string) {
+func runWithConfig(cmd string) error {
 	cfg, err := ensureConfigured()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 	switch cmd {
 	case "schedule":
@@ -212,6 +215,7 @@ func runWithConfig(cmd string) {
 	case "get":
 		fmt.Println("get: not yet implemented")
 	}
+	return nil
 }
 
 func runSetupWizard() (*config.Config, error) {
