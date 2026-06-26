@@ -54,6 +54,10 @@ func Load() (*Config, error) {
 }
 
 func Save(c *Config) error {
+	if err := EnsureDir(); err != nil {
+		return err
+	}
+
 	path, err := Path()
 	if err != nil {
 		return err

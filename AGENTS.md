@@ -22,3 +22,10 @@ Style rules:
 - Summary of Changes: bullet list of key changes
 - Testing: describe what was tested
 - Documentation: note if docs were updated
+
+## Testing
+
+- Run `make test` for full test suite, `make test-short` to skip integration tests.
+- CI runs `go test ./... -short -v -count=1`, `go vet ./...`, and `go build` on push/PR to main.
+- Use `t.TempDir()` + `t.Setenv()` for filesystem isolation in tests.
+- New features should include unit tests; integration tests go behind `testing.Short()`.
