@@ -71,7 +71,20 @@ func run(args []string) error {
 		runHelp()
 		return fmt.Errorf("unknown command: %s", args[0])
 	}
-	return nil
+
+	// Here, we want to check if this is the first time the user has utilizer their broker. If they haven't, then they should run through their confioguration,
+	// otherwise, they can be presented with their options
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !config.IsConfigured(cfg) {
+		runInit()
+	} else {
+		runHelp()
+	}
 }
 
 func runHelp() {
