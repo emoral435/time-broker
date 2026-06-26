@@ -1,0 +1,33 @@
+name: Go Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run unit tests
+        run: go test ./... -short -v -count=1
+
+      - name: Run vet
+        run: go vet ./...
+
+      - name: Verify build
+        run: go build ./cmd/time-broker/
