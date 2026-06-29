@@ -123,9 +123,11 @@ func runConfig(args []string) error {
 			return err
 		}
 		if !config.IsConfigured(cfg) {
-			return fmt.Errorf("No configuration found. Run 'time-broker config init' to set up.")
+			fmt.Println("No configuration found. Run 'time-broker config init' to set up.")
+			return nil
 		}
-		runConfigList()
+		fmt.Printf("provider: %s\nweek_start_day: %s\n", cfg.Provider, cfg.WeekStartDay)
+		return nil
 	}
 
 	switch args[0] {

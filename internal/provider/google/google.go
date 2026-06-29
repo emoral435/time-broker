@@ -26,7 +26,9 @@ var (
 	ClientSecret string
 )
 
-const redirectPort = ":8085"
+var redirectPort = ":8085"
+
+const ProviderName = "google"
 
 type Provider struct {
 	config  *oauth2.Config
@@ -64,7 +66,7 @@ func New() *Provider {
 }
 
 func (g *Provider) Name() string {
-	return "google"
+	return ProviderName
 }
 
 func (g *Provider) Auth() error {
@@ -120,7 +122,7 @@ func (g *Provider) Auth() error {
 		}
 		g.token = tok
 		if err := config.SaveToken(tok); err != nil {
-			return fmt.Errorf("save token: %w", err)
+			return fmt.Errorf("save token error: %w", err)
 		}
 		g.createService()
 		return nil
@@ -145,14 +147,15 @@ func (g *Provider) Book(title string, start, end time.Time) error {
 	return fmt.Errorf("book: not yet implemented")
 }
 
-func (g *Provider) createService() {
+func (g *Provider) createService(opts ...option.ClientOption) {
 	ctx := context.Background()
 	ts := g.config.TokenSource(ctx, g.token)
 	saving := &saveTokenSource{
 		src: oauth2.ReuseTokenSource(g.token, ts),
 	}
 	client := oauth2.NewClient(ctx, saving)
-	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
+	allOpts := append([]option.ClientOption{option.WithHTTPClient(client)}, opts...)
+	srv, err := calendar.NewService(ctx, allOpts...)
 	if err != nil {
 		return
 	}
@@ -180,7 +183,7 @@ func randomState() string {
 	return hex.EncodeToString(b)
 }
 
-func openURL(url string) error {
+var openURL = func(url string) error {
 	switch runtime.GOOS {
 	case "darwin":
 		return exec.Command("open", url).Start()
@@ -189,6 +192,6 @@ func openURL(url string) error {
 	case "windows":
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	default:
-		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+		return fmt.Errorf("unsupported OS platform: %s", runtime.GOOS)
 	}
 }
