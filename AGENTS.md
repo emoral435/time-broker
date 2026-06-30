@@ -29,3 +29,10 @@ Style rules:
 - CI runs `go test ./... -short -v -count=1`, `go vet ./...`, and `go build` on push/PR to main.
 - Use `t.TempDir()` + `t.Setenv()` for filesystem isolation in tests.
 - New features should include unit tests; integration tests go behind `testing.Short()`.
+- Documentation: note if docs were updated
+
+## Precommit Hooks
+
+This project uses lefthook for precommit hooks. Run `make setup` or `lefthook install`
+after cloning to enable them. The hooks run linting, vetting, building, and testing
+for both Go and frontend code in parallel. See `lefthook.yml` for details.
