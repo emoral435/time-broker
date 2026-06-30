@@ -27,8 +27,12 @@ var (
 )
 
 var redirectPort = ":8085"
+var authTimeout = 2 * time.Minute
+var testListener net.Listener
 
-const ProviderName = "google"
+const (
+	ProviderName = "google"
+)
 
 type Provider struct {
 	config  *oauth2.Config
@@ -78,8 +82,8 @@ func (g *Provider) Auth() error {
 		return fmt.Errorf("google OAuth credentials not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables, or inject them at build time")
 	}
 
-	codeChan := make(chan string)
-	errChan := make(chan error)
+	codeChan := make(chan string, 1)
+	errChan := make(chan error, 1)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
@@ -92,9 +96,16 @@ func (g *Provider) Auth() error {
 		codeChan <- code
 	})
 
-	listener, err := net.Listen("tcp", redirectPort)
-	if err != nil {
-		return fmt.Errorf("start callback server on port %s: %w", redirectPort, err)
+	var listener net.Listener
+	if testListener != nil {
+		listener = testListener
+		testListener = nil
+	} else {
+		var err error
+		listener, err = net.Listen("tcp", redirectPort)
+		if err != nil {
+			return fmt.Errorf("start callback server on port %s: %w", redirectPort, err)
+		}
 	}
 
 	server := &http.Server{Handler: mux}
@@ -128,8 +139,8 @@ func (g *Provider) Auth() error {
 		return nil
 	case err := <-errChan:
 		return err
-	case <-time.After(2 * time.Minute):
-		return fmt.Errorf("authentication timed out after 2 minutes")
+	case <-time.After(authTimeout):
+		return fmt.Errorf("authentication timed out after %v", authTimeout)
 	}
 }
 
