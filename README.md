@@ -51,8 +51,13 @@ rm -rf "($HOME)/.time-broker"
 ```
 
 ## How it works
+Upon installation, you can use `time-broker` to configure your calendar provider and additional personal settings.
 
-## Quick Start
+From there, you can use `time-broker help` to see all the possible options you have, but for starters, you have...
+
+```sh
+time-broker get # an option to get events, see when you are free, etc.
+```
 
 ## Web Frontend
 
