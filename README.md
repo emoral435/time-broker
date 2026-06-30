@@ -68,6 +68,42 @@ make frontend-build
 
 The dev server proxies `/api` requests to the Go backend at `localhost:8080`. Configure the target in `frontend/vite.config.ts`.
 
+## Development
+
+### Prerequisites
+
+- Go 1.25+
+- golangci-lint
+- Node.js (for frontend work)
+
+### Makefile targets
+
+| Target | Description |
+|---|---|
+| `build` | Build the Go binary to `bin/time-broker` |
+| `lint` | Run golangci-lint on all Go files |
+| `lint-fix` | Run golangci-lint with auto-fix |
+| `vet` | Run `go vet` on all Go packages |
+| `test` | Run all Go tests (bypasses cache) |
+| `build-all` | Verify all Go packages compile |
+| `frontend-dev` | Start the Vite dev server on port 3000 |
+| `frontend-build` | Build the frontend for production |
+| `frontend-lint` | Run oxlint on frontend TypeScript files |
+
+### Precommit hooks
+
+This project uses [lefthook](https://github.com/evilmartians/lefthook) to run
+linting, vetting, building, and testing on every commit. All checks run in
+parallel and only trigger when relevant files change.
+
+To enable hooks after cloning:
+
+```sh
+make setup
+```
+
+This installs lefthook via Homebrew (if missing) and registers the git hooks.
+
 ## Star History
 
 <a href="https://www.star-history.com/?repos=emoral435%2Ftime-broker&type=date&legend=top-left">

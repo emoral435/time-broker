@@ -14,21 +14,53 @@ weight: 2
 git clone https://github.com/emoral435/time-broker
 cd time-broker
 go mod download
-go build -o bin/time-broker ./cmd/time-broker/
+make setup     # installs lefthook and registers precommit hooks
+make build     # verify the project compiles
 ```
 
-## Running Tests
+## Precommit hooks
 
-```shell
-go test ./...
-```
+This project uses [lefthook](https://github.com/evilmartians/lefthook) to run
+linting, vetting, building, and testing on every commit. All checks run in
+parallel and only trigger when relevant files change:
+
+| Hook | Trigger | What it runs |
+|---|---|---|
+| `go-vet` | `.go` files change | `go vet ./...` |
+| `go-lint` | `.go` files change | `golangci-lint run ./...` |
+| `go-build` | `.go` files change | `go build ./...` |
+| `go-test` | `.go` files change | `go test ./... -count=1` |
+| `frontend-lint` | `.ts/.tsx` files change | `oxlint` via `npm run lint` |
+| `frontend-build` | `.ts/.tsx/.css/.json` files change | `vite build` via `npm run build` |
+
+If any check fails, the commit is blocked. Run the failing check directly to
+debug (e.g. `make lint`, `make test`).
+
+To enable hooks after cloning: `make setup`. To bypass hooks for a quick
+iteration (not recommended): `git commit --no-verify`.
+
+## Makefile commands
+
+Common development commands are available via the Makefile:
+
+| Target | Description |
+|---|---|
+| `build` | Build the Go binary to `bin/time-broker` |
+| `lint` | Run golangci-lint on all Go files |
+| `lint-fix` | Run golangci-lint with auto-fix |
+| `vet` | Run `go vet` on all Go packages |
+| `test` | Run all Go tests (bypasses cache with `-count=1`) |
+| `build-all` | Verify all Go packages compile |
+| `frontend-dev` | Start the Vite dev server on port 3000 |
+| `frontend-build` | Build the frontend for production |
+| `frontend-lint` | Run oxlint on frontend TypeScript files |
 
 ## Submitting Changes
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run `go mod tidy` and `go test ./...`
+4. Run `make test` and `make lint` to verify locally
 5. Submit a pull request
 
 ## Documentation

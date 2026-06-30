@@ -1,0 +1,21 @@
+pre-commit:
+  parallel: true
+  commands:
+    go-vet:
+      glob: "*.go"
+      run: make vet
+    go-lint:
+      glob: "*.go"
+      run: make lint
+    go-build:
+      glob: "*.go"
+      run: make build-all
+    go-test:
+      glob: "*.go"
+      run: make test
+    frontend-lint:
+      glob: "*.{ts,tsx}"
+      run: make frontend-lint
+    frontend-build:
+      glob: "*.{ts,tsx,js,jsx,json,css}"
+      run: make frontend-build
