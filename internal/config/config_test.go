@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+const (
+	googleProviderName = "google"
+)
+
 func TestIsConfigured(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -13,9 +17,9 @@ func TestIsConfigured(t *testing.T) {
 		wanted bool
 	}{
 		{name: "empty", cfg: &Config{}, wanted: false},
-		{name: "provider only", cfg: &Config{Provider: "google"}, wanted: false},
+		{name: "provider only", cfg: &Config{Provider: googleProviderName}, wanted: false},
 		{name: "week_start_day only", cfg: &Config{WeekStartDay: "monday"}, wanted: false},
-		{name: "full", cfg: &Config{Provider: "google", WeekStartDay: "monday"}, wanted: true},
+		{name: "full", cfg: &Config{Provider: googleProviderName, WeekStartDay: "monday"}, wanted: true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -30,7 +34,7 @@ func TestSaveAndLoad(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 
-	cfg := &Config{Provider: "google", WeekStartDay: "sunday"}
+	cfg := &Config{Provider: googleProviderName, WeekStartDay: "sunday"}
 	if err := Save(cfg); err != nil {
 		t.Fatalf("Save() error: %v", err)
 	}
@@ -104,16 +108,16 @@ func TestEnsureDirIdempotent(t *testing.T) {
 	}
 }
 
-func TestConfigPath(t *testing.T) {
+func TestPath(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 
-	path, err := ConfigPath()
+	path, err := Path()
 	if err != nil {
-		t.Fatalf("ConfigPath() error: %v", err)
+		t.Fatalf("Path() error: %v", err)
 	}
 	want := filepath.Join(dir, ".time-broker", "config")
 	if path != want {
-		t.Errorf("ConfigPath() = %q; want %q", path, want)
+		t.Errorf("Path() = %q; want %q", path, want)
 	}
 }

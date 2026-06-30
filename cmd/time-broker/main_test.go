@@ -2,9 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/emoral435/time-broker/internal/config"
 )
 
 func captureStdout(f func()) string {
@@ -17,7 +20,7 @@ func captureStdout(f func()) string {
 	w.Close()
 	os.Stdout = old
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	return buf.String()
 }
 
@@ -34,7 +37,7 @@ func TestRunNoArgs(t *testing.T) {
 
 func TestRunHelp(t *testing.T) {
 	got := captureStdout(func() {
-		if err := run([]string{"help"}); err != nil {
+		if err := run([]string{helpAsStr}); err != nil {
 			t.Errorf("run() unexpected error: %v", err)
 		}
 	})
@@ -83,13 +86,13 @@ func TestRunConfigNoArgsNoConfig(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 
-	if err := run([]string{"config"}); err != nil {
+	if err := run([]string{cfgAsStr}); err != nil {
 		t.Fatalf("run() returned error: %v", err)
 	}
 }
 
 func TestRunConfigUnknownSubcommand(t *testing.T) {
-	err := run([]string{"config", "foobar"})
+	err := run([]string{cfgAsStr, "foobar"})
 	if err == nil {
 		t.Fatal("expected error for unknown config subcommand")
 	}
@@ -108,13 +111,21 @@ func TestRunVersionOutput(t *testing.T) {
 }
 
 func TestInitReadsVersionFile(t *testing.T) {
-	Version = "dev"
+	Version = devAsStr
 	dir := t.TempDir()
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Logf("failed to restore wd: %v", err)
+		}
+	}()
 
-	os.WriteFile("VERSION", []byte("2.0.0-rc1\n"), 0644)
+	if err := os.WriteFile("VERSION", []byte("2.0.0-rc1\n"), 0644); err != nil {
+		t.Fatalf("write VERSION file: %v", err)
+	}
 
 	loadVersionFromFile()
 
@@ -124,15 +135,21 @@ func TestInitReadsVersionFile(t *testing.T) {
 }
 
 func TestInitNoVersionFile(t *testing.T) {
-	Version = "dev"
+	Version = devAsStr
 	dir := t.TempDir()
 	oldWd, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(oldWd)
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Logf("failed to restore wd: %v", err)
+		}
+	}()
 
 	loadVersionFromFile()
 
-	if Version != "dev" {
+	if Version != devAsStr {
 		t.Errorf("Version should stay 'dev' when no file, got %q", Version)
 	}
 }
@@ -141,7 +158,13 @@ func TestRunScheduleNotConfigured(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 
-	err := run([]string{"schedule"})
+	oldWizard := runSetupWizardFn
+	runSetupWizardFn = func() (*config.Config, error) {
+		return nil, errors.New("wizard disabled in tests")
+	}
+	t.Cleanup(func() { runSetupWizardFn = oldWizard })
+
+	err := run([]string{schedule})
 	if err == nil {
 		t.Fatal("expected error when not configured")
 	}
@@ -151,7 +174,13 @@ func TestRunUpdateNotConfigured(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 
-	err := run([]string{"update"})
+	oldWizard := runSetupWizardFn
+	runSetupWizardFn = func() (*config.Config, error) {
+		return nil, errors.New("wizard disabled in tests")
+	}
+	t.Cleanup(func() { runSetupWizardFn = oldWizard })
+
+	err := run([]string{update})
 	if err == nil {
 		t.Fatal("expected error when not configured")
 	}
@@ -159,7 +188,7 @@ func TestRunUpdateNotConfigured(t *testing.T) {
 
 func TestRunConfigHelp(t *testing.T) {
 	got := captureStdout(func() {
-		if err := run([]string{"config", "help"}); err != nil {
+		if err := run([]string{cfgAsStr, helpAsStr}); err != nil {
 			t.Errorf("run() unexpected error: %v", err)
 		}
 	})

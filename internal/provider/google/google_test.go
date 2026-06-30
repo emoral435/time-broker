@@ -20,6 +20,16 @@ import (
 	"github.com/emoral435/time-broker/internal/config"
 )
 
+const (
+	bearerAsStr   = "Bearer"
+	buildScrtStr  = "build-secret"
+	buildIDStr    = "build-id"
+	testScrtStr   = "test-secret"
+	testIDStr     = "test-id"
+	validTokenStr = "valid-token"
+	mockAccStr    = "mock-access-token"
+)
+
 func TestName(t *testing.T) {
 	p := New()
 	if got := p.Name(); got != ProviderName {
@@ -28,8 +38,8 @@ func TestName(t *testing.T) {
 }
 
 func TestNewWithEnvVars(t *testing.T) {
-	t.Setenv("GOOGLE_CLIENT_ID", "test-id")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "test-secret")
+	t.Setenv("GOOGLE_CLIENT_ID", testIDStr)
+	t.Setenv("GOOGLE_CLIENT_SECRET", testScrtStr)
 
 	p := New()
 	if p == nil {
@@ -38,17 +48,17 @@ func TestNewWithEnvVars(t *testing.T) {
 	if p.config == nil {
 		t.Fatal("New() didn't initialize config")
 	}
-	if p.config.ClientID != "test-id" {
-		t.Errorf("ClientID = %q; want %q", p.config.ClientID, "test-id")
+	if p.config.ClientID != testIDStr {
+		t.Errorf("ClientID = %q; want %q", p.config.ClientID, testIDStr)
 	}
-	if p.config.ClientSecret != "test-secret" {
-		t.Errorf("ClientSecret = %q; want %q", p.config.ClientSecret, "test-secret")
+	if p.config.ClientSecret != testScrtStr {
+		t.Errorf("ClientSecret = %q; want %q", p.config.ClientSecret, testScrtStr)
 	}
 }
 
 func TestNewWithBuildFlags(t *testing.T) {
-	ClientID = "build-id"
-	ClientSecret = "build-secret"
+	ClientID = buildIDStr
+	ClientSecret = buildScrtStr
 	defer func() {
 		ClientID = ""
 		ClientSecret = ""
@@ -58,11 +68,11 @@ func TestNewWithBuildFlags(t *testing.T) {
 	os.Unsetenv("GOOGLE_CLIENT_SECRET")
 
 	p := New()
-	if p.config.ClientID != "build-id" {
-		t.Errorf("ClientID = %q; want %q", p.config.ClientID, "build-id")
+	if p.config.ClientID != buildIDStr {
+		t.Errorf("ClientID = %q; want %q", p.config.ClientID, buildIDStr)
 	}
-	if p.config.ClientSecret != "build-secret" {
-		t.Errorf("ClientSecret = %q; want %q", p.config.ClientSecret, "build-secret")
+	if p.config.ClientSecret != buildScrtStr {
+		t.Errorf("ClientSecret = %q; want %q", p.config.ClientSecret, buildScrtStr)
 	}
 }
 
@@ -70,7 +80,7 @@ func TestNewBuildFlagsOverrideEnvVars(t *testing.T) {
 	t.Setenv("GOOGLE_CLIENT_ID", "env-id")
 	t.Setenv("GOOGLE_CLIENT_SECRET", "env-secret")
 
-	ClientID = "build-id"
+	ClientID = buildIDStr
 	ClientSecret = "build-secret"
 	defer func() {
 		ClientID = ""
@@ -78,7 +88,7 @@ func TestNewBuildFlagsOverrideEnvVars(t *testing.T) {
 	}()
 
 	p := New()
-	if p.config.ClientID != "build-id" {
+	if p.config.ClientID != buildIDStr {
 		t.Errorf("ClientID = %q; want 'build-id' (build flags take priority)", p.config.ClientID)
 	}
 	if p.config.ClientSecret != "build-secret" {
@@ -89,12 +99,12 @@ func TestNewBuildFlagsOverrideEnvVars(t *testing.T) {
 func TestNewTokenLoadedFromFile(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
-	t.Setenv("GOOGLE_CLIENT_ID", "test-id")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "test-secret")
+	t.Setenv("GOOGLE_CLIENT_ID", testIDStr)
+	t.Setenv("GOOGLE_CLIENT_SECRET", testScrtStr)
 
 	tok := &oauth2.Token{
 		AccessToken: "cached-access-token",
-		TokenType:   "Bearer",
+		TokenType:   bearerAsStr,
 		Expiry:      time.Now().Add(time.Hour),
 	}
 	if err := config.SaveToken(tok); err != nil {
@@ -108,16 +118,13 @@ func TestNewTokenLoadedFromFile(t *testing.T) {
 	if p.token.AccessToken != "cached-access-token" {
 		t.Errorf("AccessToken = %q; want %q", p.token.AccessToken, "cached-access-token")
 	}
-	if p.service != nil {
-		t.Log("service was created from cached token (requires network)")
-	}
 }
 
 func TestFreeSlotsNotAuthenticated(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
-			ClientID:     "test-id",
-			ClientSecret: "test-secret",
+			ClientID:     testIDStr,
+			ClientSecret: testScrtStr,
 		},
 	}
 	_, err := p.FreeSlots(time.Now(), time.Hour)
@@ -130,10 +137,10 @@ func TestFreeSlotsNotAuthenticated(t *testing.T) {
 }
 
 func TestBookNotAuthenticated(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
-			ClientID:     "test-id",
-			ClientSecret: "test-secret",
+			ClientID:     testIDStr,
+			ClientSecret: testScrtStr,
 		},
 	}
 	err := p.Book("test", time.Now(), time.Now().Add(time.Hour))
@@ -146,7 +153,7 @@ func TestBookNotAuthenticated(t *testing.T) {
 }
 
 func TestFreeSlotsNotYetImplemented(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		service: &calendar.Service{},
 	}
 	_, err := p.FreeSlots(time.Now(), time.Hour)
@@ -159,7 +166,7 @@ func TestFreeSlotsNotYetImplemented(t *testing.T) {
 }
 
 func TestBookNotYetImplemented(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		service: &calendar.Service{},
 	}
 	err := p.Book("test", time.Now(), time.Now().Add(time.Hour))
@@ -186,17 +193,17 @@ func TestRandomState(t *testing.T) {
 func TestRandomStateHex(t *testing.T) {
 	s := randomState()
 	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("randomState() contains non-hex character: %c", c)
 		}
 	}
 }
 
 func TestCreateServiceSadPath_NilToken(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
-			ClientID:     "test-id",
-			ClientSecret: "test-secret",
+			ClientID:     testIDStr,
+			ClientSecret: testScrtStr,
 			Endpoint:     google.Endpoint,
 		},
 		token: nil,
@@ -208,17 +215,17 @@ func TestCreateServiceSadPath_NilToken(t *testing.T) {
 }
 
 func TestCreateServiceSadPath_ExpiredToken(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
-			ClientID:     "test-id",
-			ClientSecret: "test-secret",
+			ClientID:     testIDStr,
+			ClientSecret: testScrtStr,
 			Endpoint: oauth2.Endpoint{
 				TokenURL: "https://invalid-token.example.com/token",
 			},
 		},
 		token: &oauth2.Token{
 			AccessToken:  "expired-token",
-			TokenType:    "Bearer",
+			TokenType:    bearerAsStr,
 			RefreshToken: "expired-refresh",
 			Expiry:       time.Now().Add(-1 * time.Hour),
 		},
@@ -235,6 +242,7 @@ func TestCreateServiceHappyPath(t *testing.T) {
 	mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit = true
 		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck // mock handler; encode failure means test already disconnected
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"kind":    "discovery#restDescription",
 			"name":    "calendar",
@@ -242,19 +250,19 @@ func TestCreateServiceHappyPath(t *testing.T) {
 			"baseUrl": mockServer.URL + "/calendar/v3/",
 		})
 	}))
-	defer mockServer.Close()
+	t.Cleanup(mockServer.Close)
 
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
-			ClientID:     "test-id",
-			ClientSecret: "test-secret",
+			ClientID:     testIDStr,
+			ClientSecret: testScrtStr,
 			Endpoint: oauth2.Endpoint{
 				TokenURL: mockServer.URL + "/token",
 			},
 		},
 		token: &oauth2.Token{
-			AccessToken: "valid-token",
-			TokenType:   "Bearer",
+			AccessToken: validTokenStr,
+			TokenType:   bearerAsStr,
 			Expiry:      time.Now().Add(time.Hour),
 		},
 	}
@@ -269,14 +277,14 @@ func TestCreateServiceHappyPath(t *testing.T) {
 }
 
 func TestAuth_AlreadyAuthenticated(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
-			ClientID:     "test-id",
-			ClientSecret: "test-secret",
+			ClientID:     testIDStr,
+			ClientSecret: testScrtStr,
 		},
 		token: &oauth2.Token{
-			AccessToken: "valid-token",
-			TokenType:   "Bearer",
+			AccessToken: validTokenStr,
+			TokenType:   bearerAsStr,
 			Expiry:      time.Now().Add(time.Hour),
 		},
 	}
@@ -286,7 +294,7 @@ func TestAuth_AlreadyAuthenticated(t *testing.T) {
 }
 
 func TestAuth_MissingCredentials(t *testing.T) {
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
 			ClientID:     "",
 			ClientSecret: "",
@@ -307,48 +315,55 @@ func TestAuth_FullFlowSuccess(t *testing.T) {
 		t.Fatalf("failed to find free port: %v", err)
 	}
 	freePort := listener.Addr().(*net.TCPAddr).Port
-	listener.Close()
+
+	testListener = listener
+	t.Cleanup(func() {
+		listener.Close()
+		testListener = nil
+	})
 
 	oldPort := redirectPort
 	redirectPort = fmt.Sprintf(":%d", freePort)
-	defer func() { redirectPort = oldPort }()
+	t.Cleanup(func() { redirectPort = oldPort })
+
+	oldTimeout := authTimeout
+	authTimeout = 5 * time.Second
+	t.Cleanup(func() { authTimeout = oldTimeout })
 
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck // mock handler; encode failure means test already disconnected
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"access_token": "mock-access-token",
-			"token_type":   "Bearer",
+			"access_token": mockAccStr,
+			"token_type":   bearerAsStr,
 			"expires_in":   3600,
 		})
 	}))
-	defer tokenServer.Close()
+	t.Cleanup(tokenServer.Close)
 
 	authCalled := make(chan struct{})
 	oldOpen := openURL
 	openURL = func(rawurl string) error {
 		close(authCalled)
 
-		go func() {
-			time.Sleep(50 * time.Millisecond)
-			u, err := url.Parse(rawurl)
-			if err != nil {
-				t.Errorf("failed to parse auth URL: %v", err)
-				return
-			}
-			state := u.Query().Get("state")
-			callbackURL := fmt.Sprintf("http://localhost:%d/callback?code=test-code&state=%s", freePort, state)
-			resp, err := http.Get(callbackURL)
-			if err != nil {
-				t.Errorf("callback request failed: %v", err)
-				return
-			}
-			resp.Body.Close()
-		}()
+		u, err := url.Parse(rawurl)
+		if err != nil {
+			t.Errorf("failed to parse auth URL: %v", err)
+			return err
+		}
+		state := u.Query().Get("state")
+		callbackURL := fmt.Sprintf("http://localhost:%d/callback?code=test-code&state=%s", freePort, state)
+		resp, err := http.Get(callbackURL)
+		if err != nil {
+			t.Errorf("callback request failed: %v", err)
+			return err
+		}
+		resp.Body.Close()
 		return nil
 	}
-	defer func() { openURL = oldOpen }()
+	t.Cleanup(func() { openURL = oldOpen })
 
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
@@ -367,8 +382,8 @@ func TestAuth_FullFlowSuccess(t *testing.T) {
 	if p.token == nil {
 		t.Fatal("token should be set after successful auth")
 	}
-	if p.token.AccessToken != "mock-access-token" {
-		t.Errorf("AccessToken = %q; want %q", p.token.AccessToken, "mock-access-token")
+	if p.token.AccessToken != mockAccStr {
+		t.Errorf("AccessToken = %q; want %q", p.token.AccessToken, mockAccStr)
 	}
 }
 
@@ -378,39 +393,46 @@ func TestAuth_FullFlowCallbackError(t *testing.T) {
 		t.Fatalf("failed to find free port: %v", err)
 	}
 	freePort := listener.Addr().(*net.TCPAddr).Port
-	listener.Close()
+
+	testListener = listener
+	t.Cleanup(func() {
+		listener.Close()
+		testListener = nil
+	})
 
 	oldPort := redirectPort
 	redirectPort = fmt.Sprintf(":%d", freePort)
-	defer func() { redirectPort = oldPort }()
+	t.Cleanup(func() { redirectPort = oldPort })
+
+	oldTimeout := authTimeout
+	authTimeout = 5 * time.Second
+	t.Cleanup(func() { authTimeout = oldTimeout })
 
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck // mock handler; encode failure means test already disconnected
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"access_token": "mock-access-token",
-			"token_type":   "Bearer",
+			"access_token": mockAccStr,
+			"token_type":   bearerAsStr,
 			"expires_in":   3600,
 		})
 	}))
-	defer tokenServer.Close()
+	t.Cleanup(tokenServer.Close)
 
 	oldOpen := openURL
 	openURL = func(rawurl string) error {
-		go func() {
-			time.Sleep(50 * time.Millisecond)
-			callbackURL := fmt.Sprintf("http://localhost:%d/callback", freePort)
-			resp, err := http.Get(callbackURL)
-			if err != nil {
-				t.Errorf("callback request failed: %v", err)
-				return
-			}
-			resp.Body.Close()
-		}()
+		callbackURL := fmt.Sprintf("http://localhost:%d/callback", freePort)
+		resp, err := http.Get(callbackURL)
+		if err != nil {
+			t.Errorf("callback request failed: %v", err)
+			return err
+		}
+		resp.Body.Close()
 		return nil
 	}
-	defer func() { openURL = oldOpen }()
+	t.Cleanup(func() { openURL = oldOpen })
 
-	p := &GoogleProvider{
+	p := &Provider{
 		config: &oauth2.Config{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
@@ -437,7 +459,7 @@ func TestSaveTokenSource(t *testing.T) {
 	ts := &saveTokenSource{
 		src: oauth2.StaticTokenSource(&oauth2.Token{
 			AccessToken: "saved-token",
-			TokenType:   "Bearer",
+			TokenType:   bearerAsStr,
 			Expiry:      time.Now().Add(time.Hour),
 		}),
 	}

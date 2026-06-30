@@ -12,14 +12,25 @@ import (
 	"github.com/emoral435/time-broker/internal/provider/google"
 )
 
-var Version = "dev"
+const (
+	helpAsStr = "help"
+	devAsStr  = "dev"
+	cfgAsStr  = "config"
+	schedule  = "schedule"
+	update    = "update"
+	get       = "get"
+)
+
+var Version = devAsStr
+
+var runSetupWizardFn = runSetupWizard
 
 func init() {
 	loadVersionFromFile()
 }
 
 func loadVersionFromFile() {
-	if Version != "dev" {
+	if Version != devAsStr {
 		return
 	}
 	data, err := os.ReadFile("VERSION")
@@ -45,15 +56,15 @@ func run(args []string) error {
 	}
 
 	switch args[0] {
-	case "help":
+	case helpAsStr:
 		runHelp()
 	case "version":
 		runVersion()
 	case "auth":
 		return runAuth()
-	case "config":
+	case cfgAsStr:
 		return runConfig(args[1:])
-	case "schedule", "update", "get":
+	case schedule, update, get:
 		return runWithConfig(args[0])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", args[0])
@@ -192,7 +203,7 @@ func ensureConfigured() (*config.Config, error) {
 		return nil, err
 	}
 	if !config.IsConfigured(cfg) {
-		cfg, err = runSetupWizard()
+		cfg, err = runSetupWizardFn()
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +221,7 @@ func runWithConfig(cmd string) error {
 		return err
 	}
 	switch cmd {
-	case "schedule":
+	case schedule:
 		fmt.Printf("schedule: not yet implemented (configured for %s)\n", cfg.Provider)
 	case "update":
 		fmt.Println("update: not yet implemented")

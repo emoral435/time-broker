@@ -4,5 +4,6 @@
 /docs/public/
 /docs/resources/
 .env
+.lint
 time-broker
 tb
