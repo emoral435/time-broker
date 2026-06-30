@@ -5,12 +5,7 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      - ".github/workflows/docs.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - ".github/workflows/docs.yml"
+      - ".github/workflows/docs*.yml"
 
 permissions:
   contents: read
@@ -34,13 +29,11 @@ jobs:
         run: hugo --minify
         working-directory: docs
       - name: Upload Pages artifact
-        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/public
 
   deploy:
-    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     environment:
