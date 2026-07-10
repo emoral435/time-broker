@@ -1,43 +1,17 @@
-## Intent
+Have you done the following:
+- [ ] Does your commit follow [conventional commit standards](https://www.conventionalcommits.org/en/v1.0.0/)?
+- [ ] Did you write new test cases for this merge request (especially if this introduces new features and BL)?
+- [ ] Did the test cases run successfully in your environment?
+- [ ] If this introduces something new that is user-facing, did you update the README / docs?
 
-<!--
-  Describe the problem or feature in one or two sentences.
-  Example: "Allow users to filter free slots by minimum duration" or
-  "Fix crash when authenticating with an expired token."
--->
+##### Explain the problem 
+---
 
-## Summary of Changes
 
-<!--
-  Bullet-list the key changes. Keep it scannable.
-  - Added --duration flag to the free command
-  - Updated Google provider to filter slots by duration
-  - Added unit tests for slot filtering
--->
 
-## Related Issue
+##### Explain the solution 
+---
 
-<!-- Link to the GitHub issue, if any. e.g. Closes #42 -->
 
-## Testing
 
-<!--
-  Describe how you tested your changes.
-  e.g. "go test ./... passes", "manually ran time-broker free --duration 30"
--->
-
-- [ ] `go test ./...` passes
-- [ ] `go build ./cmd/time-broker/` succeeds
-- [ ] Manual verification (describe below)
-
-## Documentation
-
-- [ ] Docs updated in `docs/content/`
-- [ ] `hugo --minify` builds without errors
-- [ ] README updated (if applicable)
-
-## Screenshots (if UI change)
-
-<!--
-  If the change affects the TUI, paste a terminal recording or screenshot.
--->
+##### Provide links to any relevant issue tickets, articles or other resources
