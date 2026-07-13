@@ -22,8 +22,10 @@ const (
 	helpAsStr = "help"
 	devAsStr  = "dev"
 	cfgAsStr  = "config"
+	event     = "event"
 	schedule  = "schedule"
 	update    = "update"
+	view      = "view"
 )
 
 var Version = devAsStr
@@ -76,6 +78,8 @@ func run(args []string) error {
 		return runConfig(args[1:])
 	case schedule:
 		return runSchedule(args[1:])
+	case view:
+		return runView(args[1:])
 	case update:
 		return runUpdate()
 	default:
@@ -110,7 +114,8 @@ func runHelp() {
 	fmt.Fprint(w, "  help\tShow this help message\n")
 	fmt.Fprint(w, "  schedule\tManage events on your calendar (run 'schedule help' for subcommands)\n")
 	fmt.Fprint(w, "  update\tUpdate time-broker to the latest version\n")
-	fmt.Fprint(w, "  version\tPrint version information\n\n")
+	fmt.Fprint(w, "  version\tPrint version information\n")
+	fmt.Fprint(w, "  view\tView events and availability on your calendar\n\n")
 	fmt.Fprint(w, "Run 'time-broker help <command>' for more details.\n")
 	w.Flush()
 }
@@ -251,14 +256,12 @@ func runSchedule(args []string) error {
 	case helpAsStr:
 		runScheduleHelp()
 		return nil
-	case "event":
+	case event:
 		return runScheduleEvent()
 	case "cancel":
 		return runScheduleCancel()
 	case "update":
 		return runScheduleUpdate()
-	case "view":
-		return runScheduleView()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown schedule subcommand: %s\n\n", args[0])
 		runScheduleHelp()
@@ -275,7 +278,6 @@ func runScheduleHelp() {
 	fmt.Fprint(w, "  event\tSchedule a new event\n")
 	fmt.Fprint(w, "  cancel\tCancel an existing event\n")
 	fmt.Fprint(w, "  update\tUpdate an existing event\n")
-	fmt.Fprint(w, "  view\tView upcoming events\n")
 	w.Flush()
 }
 
@@ -306,12 +308,69 @@ func runScheduleUpdate() error {
 	return nil
 }
 
-func runScheduleView() error {
+func runView(args []string) error {
+	if len(args) == 0 {
+		runViewHelp()
+		return nil
+	}
+
+	switch args[0] {
+	case helpAsStr:
+		runViewHelp()
+		return nil
+	case event:
+		return runViewEvent()
+	case "day":
+		return runViewDay(args[1:])
+	case "availability":
+		return runViewAvailability()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown view subcommand: %s\n\n", args[0])
+		runViewHelp()
+		return fmt.Errorf("unknown view subcommand: %s", args[0])
+	}
+}
+
+func runViewHelp() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Usage: time-broker view <subcommand>\n\n")
+	fmt.Fprint(w, "View events and availability on your calendar.\n\n")
+	fmt.Fprint(w, "Subcommands:\n")
+	fmt.Fprint(w, "  help\tShow this help message\n")
+	fmt.Fprint(w, "  event\tView a specific event\n")
+	fmt.Fprint(w, "  day\tView a specific day's schedule\n")
+	fmt.Fprint(w, "  availability\tView your availability\n")
+	w.Flush()
+}
+
+func runViewEvent() error {
 	_, err := ensureConfigured()
 	if err != nil {
 		return err
 	}
-	fmt.Println("schedule view: not yet implemented")
+	fmt.Println("view event: not yet implemented")
+	return nil
+}
+
+func runViewDay(args []string) error {
+	_, err := ensureConfigured()
+	if err != nil {
+		return err
+	}
+	if len(args) == 0 {
+		fmt.Println("view day: not yet implemented (defaults to today)")
+	} else {
+		fmt.Printf("view day: not yet implemented (date: %s)\n", args[0])
+	}
+	return nil
+}
+
+func runViewAvailability() error {
+	_, err := ensureConfigured()
+	if err != nil {
+		return err
+	}
+	fmt.Println("view availability: not yet implemented")
 	return nil
 }
 

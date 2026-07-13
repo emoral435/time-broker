@@ -16,6 +16,7 @@ import (
 const (
 	testUnknownCmd = "foobar"
 	testVersion    = "1.0.0"
+	testEvent      = "event"
 )
 
 func captureStdout(f func()) string {
@@ -171,7 +172,7 @@ func TestRunScheduleNotConfigured(t *testing.T) {
 	}
 	t.Cleanup(func() { runSetupWizardFn = oldWizard })
 
-	err := run([]string{schedule, "event"})
+	err := run([]string{schedule, testEvent})
 	if err == nil {
 		t.Fatal("expected error when not configured")
 	}
@@ -206,9 +207,6 @@ func TestRunScheduleHelp(t *testing.T) {
 	if !strings.Contains(got, "update") {
 		t.Errorf("expected 'update' in help text, got: %s", got)
 	}
-	if !strings.Contains(got, "view") {
-		t.Errorf("expected 'view' in help text, got: %s", got)
-	}
 }
 
 func TestRunScheduleUnknownSubcommand(t *testing.T) {
@@ -218,6 +216,63 @@ func TestRunScheduleUnknownSubcommand(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unknown schedule subcommand") {
 		t.Errorf("error = %q; want 'unknown schedule subcommand'", err)
+	}
+}
+
+func TestRunViewNoArgsShowsHelp(t *testing.T) {
+	got := captureStdout(func() {
+		if err := run([]string{view}); err != nil {
+			t.Errorf("run() unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(got, "Usage: time-broker view <subcommand>") {
+		t.Errorf("expected view help text, got: %s", got)
+	}
+}
+
+func TestRunViewHelp(t *testing.T) {
+	got := captureStdout(func() {
+		if err := run([]string{view, helpAsStr}); err != nil {
+			t.Errorf("run() unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(got, "Usage: time-broker view <subcommand>") {
+		t.Errorf("expected view help text, got: %s", got)
+	}
+	if !strings.Contains(got, "event") {
+		t.Errorf("expected 'event' in help text, got: %s", got)
+	}
+	if !strings.Contains(got, "day") {
+		t.Errorf("expected 'day' in help text, got: %s", got)
+	}
+	if !strings.Contains(got, "availability") {
+		t.Errorf("expected 'availability' in help text, got: %s", got)
+	}
+}
+
+func TestRunViewUnknownSubcommand(t *testing.T) {
+	err := run([]string{view, testUnknownCmd})
+	if err == nil {
+		t.Fatal("expected error for unknown view subcommand")
+	}
+	if !strings.Contains(err.Error(), "unknown view subcommand") {
+		t.Errorf("error = %q; want 'unknown view subcommand'", err)
+	}
+}
+
+func TestRunViewNotConfigured(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	oldWizard := runSetupWizardFn
+	runSetupWizardFn = func() (*config.Config, error) {
+		return nil, errors.New("wizard disabled in tests")
+	}
+	t.Cleanup(func() { runSetupWizardFn = oldWizard })
+
+	err := run([]string{view, "day"})
+	if err == nil {
+		t.Fatal("expected error when not configured")
 	}
 }
 

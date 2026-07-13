@@ -42,15 +42,25 @@ Manage events on your calendar.
 - `time-broker schedule event` - Schedule a new event
 - `time-broker schedule cancel` - Cancel an existing event
 - `time-broker schedule update` - Update an existing event
-- `time-broker schedule view` - View upcoming events
 
 ## update
 
-(not yet implemented)
+Update time-broker to the latest version.
 
 ```shell
 time-broker update
 ```
+
+## view
+
+View events and availability on your calendar.
+
+**Subcommands:**
+
+- `time-broker view help` - Show view subcommands
+- `time-broker view event` - View a specific event
+- `time-broker view day` - View a specific day's schedule
+- `time-broker view availability` - View your availability
 
 ## version
 
