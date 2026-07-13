@@ -92,7 +92,7 @@ func (g *Provider) Auth() error {
 			errChan <- fmt.Errorf("no code in callback response")
 			return
 		}
-		fmt.Fprint(w, `<html><body><h1>Authentication successful!</h1><p>You can close this tab.</p></body></html>`)
+		fmt.Fprint(w, `<html><body><h1>Authentication to time-broker successful!</h1><p>You can close this tab.</p></body></html>`)
 		codeChan <- code
 	})
 

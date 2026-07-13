@@ -56,7 +56,7 @@ Upon installation, you can use `time-broker` to configure your calendar provider
 From there, you can use `time-broker help` to see all the possible options you have, but for starters, you have...
 
 ```sh
-time-broker get # an option to get events, see when you are free, etc.
+time-broker schedule event # schedule a new event via your calendar provider
 ```
 
 ## Web Frontend
