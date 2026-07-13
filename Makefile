@@ -12,13 +12,7 @@ ifdef GOOGLE_CLIENT_SECRET
 XFLAGS += -X github.com/emoral435/time-broker/internal/provider/google.ClientSecret=$(GOOGLE_CLIENT_SECRET)
 endif
 
-<<<<<<< HEAD
-.PHONY: build frontend-dev frontend-build run lint lint-fix test test-short
-||||||| parent of 97336cc (feat: added local precommit setup)
-.PHONY: build frontend-dev frontend-build run lint lint-fix
-=======
 .PHONY: build frontend-dev frontend-build frontend-lint run lint lint-fix vet test build-all setup install-hooks
->>>>>>> 97336cc (feat: added local precommit setup)
 
 build:
 	go build -ldflags "$(XFLAGS)" -o bin/time-broker ./cmd/time-broker/
