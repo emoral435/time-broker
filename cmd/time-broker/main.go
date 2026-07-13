@@ -1,8 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"text/tabwriter"
 
@@ -18,12 +24,16 @@ const (
 	cfgAsStr  = "config"
 	schedule  = "schedule"
 	update    = "update"
-	get       = "get"
 )
 
 var Version = devAsStr
 
 var runSetupWizardFn = runSetupWizard
+
+var (
+	githubAPIBase      = "https://api.github.com"
+	githubDownloadBase = "https://github.com"
+)
 
 func init() {
 	loadVersionFromFile()
@@ -64,8 +74,10 @@ func run(args []string) error {
 		return runAuth()
 	case cfgAsStr:
 		return runConfig(args[1:])
-	case schedule, update, get:
-		return runWithConfig(args[0])
+	case schedule:
+		return runSchedule(args[1:])
+	case update:
+		return runUpdate()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", args[0])
 		runHelp()
@@ -81,10 +93,12 @@ func run(args []string) error {
 	}
 
 	if !config.IsConfigured(cfg) {
-		runInit()
-	} else {
-		runHelp()
+		if err := runInit(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
 	}
+
+	return nil
 }
 
 func runHelp() {
@@ -93,17 +107,16 @@ func runHelp() {
 	fmt.Fprint(w, "Commands:\n")
 	fmt.Fprint(w, "  auth\tAuthenticate with your calendar provider\n")
 	fmt.Fprint(w, "  config\tView or change configuration (run 'config help' for subcommands)\n")
-	fmt.Fprint(w, "  get\t(not yet implemented)\n")
 	fmt.Fprint(w, "  help\tShow this help message\n")
-	fmt.Fprint(w, "  schedule\tSchedule a meeting or view availability\n")
-	fmt.Fprint(w, "  update\tCheck for updates\n")
+	fmt.Fprint(w, "  schedule\tManage events on your calendar (run 'schedule help' for subcommands)\n")
+	fmt.Fprint(w, "  update\tUpdate time-broker to the latest version\n")
 	fmt.Fprint(w, "  version\tPrint version information\n\n")
 	fmt.Fprint(w, "Run 'time-broker help <command>' for more details.\n")
 	w.Flush()
 }
 
 func runVersion() {
-	fmt.Printf("time-broker %s\n", Version)
+	fmt.Printf("time-broker version %s\n", Version)
 }
 
 func runAuth() error {
@@ -155,7 +168,7 @@ func runConfig(args []string) error {
 	}
 
 	switch args[0] {
-	case "help":
+	case helpAsStr:
 		runConfigHelp()
 		return nil
 	case "init":
@@ -228,20 +241,191 @@ func ensureConfigured() (*config.Config, error) {
 	return cfg, nil
 }
 
-func runWithConfig(cmd string) error {
-	cfg, err := ensureConfigured()
+func runSchedule(args []string) error {
+	if len(args) == 0 {
+		runScheduleHelp()
+		return nil
+	}
+
+	switch args[0] {
+	case helpAsStr:
+		runScheduleHelp()
+		return nil
+	case "event":
+		return runScheduleEvent()
+	case "cancel":
+		return runScheduleCancel()
+	case "update":
+		return runScheduleUpdate()
+	case "view":
+		return runScheduleView()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown schedule subcommand: %s\n\n", args[0])
+		runScheduleHelp()
+		return fmt.Errorf("unknown schedule subcommand: %s", args[0])
+	}
+}
+
+func runScheduleHelp() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Usage: time-broker schedule <subcommand>\n\n")
+	fmt.Fprint(w, "Manage events on your calendar.\n\n")
+	fmt.Fprint(w, "Subcommands:\n")
+	fmt.Fprint(w, "  help\tShow this help message\n")
+	fmt.Fprint(w, "  event\tSchedule a new event\n")
+	fmt.Fprint(w, "  cancel\tCancel an existing event\n")
+	fmt.Fprint(w, "  update\tUpdate an existing event\n")
+	fmt.Fprint(w, "  view\tView upcoming events\n")
+	w.Flush()
+}
+
+func runScheduleEvent() error {
+	_, err := ensureConfigured()
 	if err != nil {
 		return err
 	}
-	switch cmd {
-	case schedule:
-		fmt.Printf("schedule: not yet implemented (configured for %s)\n", cfg.Provider)
-	case "update":
-		fmt.Println("update: not yet implemented")
-	case "get":
-		fmt.Println("get: not yet implemented")
-	}
+	fmt.Println("schedule event: not yet implemented")
 	return nil
+}
+
+func runScheduleCancel() error {
+	_, err := ensureConfigured()
+	if err != nil {
+		return err
+	}
+	fmt.Println("schedule cancel: not yet implemented")
+	return nil
+}
+
+func runScheduleUpdate() error {
+	_, err := ensureConfigured()
+	if err != nil {
+		return err
+	}
+	fmt.Println("schedule update: not yet implemented")
+	return nil
+}
+
+func runScheduleView() error {
+	_, err := ensureConfigured()
+	if err != nil {
+		return err
+	}
+	fmt.Println("schedule view: not yet implemented")
+	return nil
+}
+
+func runUpdate() error {
+	fmt.Printf("time-broker %s\n", Version)
+	fmt.Println("Checking for updates...")
+
+	latest, err := latestVersion()
+	if err != nil {
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+
+	if Version == latest {
+		fmt.Println("Already up to date.")
+		return nil
+	}
+
+	fmt.Printf("Updating from %s to %s...\n", Version, latest)
+	if err := downloadAndUpdate(latest); err != nil {
+		return fmt.Errorf("update failed: %w", err)
+	}
+	fmt.Printf("Successfully updated to %s\n", latest)
+	return nil
+}
+
+const githubRepo = "emoral435/time-broker"
+
+type githubRelease struct {
+	TagName string `json:"tag_name"`
+	Body    string `json:"body"`
+}
+
+func latestVersion() (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/releases/latest", githubAPIBase, githubRepo)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var release githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return release.TagName, nil
+}
+
+func downloadAndUpdate(version string) error {
+	osName := runtime.GOOS
+	arch := runtime.GOARCH
+
+	tarball := fmt.Sprintf("time-broker-%s-%s-%s.tar.gz", version, osName, arch)
+	url := fmt.Sprintf("%s/%s/releases/download/%s/%s", githubDownloadBase, githubRepo, version, tarball)
+
+	tmpDir, err := os.MkdirTemp("", "time-broker-update-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	tarballPath := filepath.Join(tmpDir, tarball)
+	if err := downloadFile(url, tarballPath); err != nil {
+		return fmt.Errorf("failed to download %s: %w", tarball, err)
+	}
+
+	if err := exec.Command("tar", "xzf", tarballPath, "-C", tmpDir).Run(); err != nil {
+		return fmt.Errorf("failed to extract tarball: %w", err)
+	}
+
+	newBinary := filepath.Join(tmpDir, "time-broker")
+	if _, err := os.Stat(newBinary); err != nil {
+		return fmt.Errorf("extracted binary not found: %w", err)
+	}
+
+	currentBinary, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to find current binary: %w", err)
+	}
+	currentBinary, err = filepath.EvalSymlinks(currentBinary)
+	if err != nil {
+		return fmt.Errorf("failed to resolve current binary path: %w", err)
+	}
+
+	if err := os.Rename(newBinary, currentBinary); err != nil {
+		return fmt.Errorf("failed to replace binary at %s: %w", currentBinary, err)
+	}
+
+	return nil
+}
+
+func downloadFile(url, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download returned status %d", resp.StatusCode)
+	}
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 func runSetupWizard() (*config.Config, error) {

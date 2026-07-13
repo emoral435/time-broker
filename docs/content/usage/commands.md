@@ -34,11 +34,15 @@ time-broker help
 
 ## schedule
 
-(not yet implemented)
+Manage events on your calendar.
 
-```shell
-time-broker schedule
-```
+**Subcommands:**
+
+- `time-broker schedule help` - Show schedule subcommands
+- `time-broker schedule event` - Schedule a new event
+- `time-broker schedule cancel` - Cancel an existing event
+- `time-broker schedule update` - Update an existing event
+- `time-broker schedule view` - View upcoming events
 
 ## update
 
@@ -46,14 +50,6 @@ time-broker schedule
 
 ```shell
 time-broker update
-```
-
-## get
-
-(not yet implemented)
-
-```shell
-time-broker get
 ```
 
 ## version
