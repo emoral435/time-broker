@@ -6,23 +6,23 @@ weight: 2
 ## Google Calendar
 
 time-broker integrates with Google Calendar via the Google Calendar API.
-You will need:
 
-1. A Google Cloud project with the Calendar API enabled
-2. OAuth 2.0 credentials (desktop application type)
-3. The credentials file configured locally
+### Scopes Granted Access
 
-### Setup
+The full list of scopes that are possible to be granted can be found on Google's official API website for [Google Calendar here](https://developers.google.com/identity/protocols/oauth2/scopes#calendar). The following scopes are granted to time-broker after the authorization screen is processed, for a short lived time until reprompted / token refresh:
 
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the **Google Calendar API**
-4. Go to **Credentials** > **Create Credentials** > **OAuth client ID**
-5. Choose **Desktop application**
-6. Download the JSON credentials file
-7. Place it at `~/.config/time-broker/credentials.json`
+* Make secondary Google calendars, and see, create, change, and delete events on them
+* See the list of Google calendars you’re subscribed to
+* See the availability on Google calendars you have access to
+* See the events on public calendars
+* View your availability in your calendars
+* See the title, description, default time zone, and other properties of Google calendars you have access to
+* View and edit events on all your calendars
+* See, create, change, and delete events on Google calendars you own
 
-### Planned Providers
+These are the bare necesities needed to run time-broker.
+
+## Planned Providers
 
 Support for additional providers is planned:
 
