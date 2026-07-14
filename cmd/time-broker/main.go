@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/charmbracelet/huh"
 
@@ -26,6 +29,9 @@ const (
 	schedule  = "schedule"
 	update    = "update"
 	view      = "view"
+
+	dateFormat = "01-02-2006"
+	timeFormat = "3:04PM"
 )
 
 var Version = devAsStr
@@ -82,6 +88,8 @@ func run(args []string) error {
 		return runView(args[1:])
 	case update:
 		return runUpdate()
+	case "uninstall":
+		return runUninstall()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", args[0])
 		runHelp()
@@ -113,6 +121,7 @@ func runHelp() {
 	fmt.Fprint(w, "  config\tView or change configuration (run 'config help' for subcommands)\n")
 	fmt.Fprint(w, "  help\tShow this help message\n")
 	fmt.Fprint(w, "  schedule\tManage events on your calendar (run 'schedule help' for subcommands)\n")
+	fmt.Fprint(w, "  uninstall\tRemove time-broker and its configuration\n")
 	fmt.Fprint(w, "  update\tUpdate time-broker to the latest version\n")
 	fmt.Fprint(w, "  version\tPrint version information\n")
 	fmt.Fprint(w, "  view\tView events and availability on your calendar\n\n")
@@ -257,7 +266,7 @@ func runSchedule(args []string) error {
 		runScheduleHelp()
 		return nil
 	case event:
-		return runScheduleEvent()
+		return runScheduleEvent(args[1:])
 	case "cancel":
 		return runScheduleCancel()
 	case "update":
@@ -281,13 +290,130 @@ func runScheduleHelp() {
 	w.Flush()
 }
 
-func runScheduleEvent() error {
-	_, err := ensureConfigured()
+func runScheduleEvent(args []string) error {
+	if len(args) > 0 && args[0] == helpAsStr {
+		runScheduleEventHelp()
+		return nil
+	}
+
+	fs := flag.NewFlagSet("schedule event", flag.ContinueOnError)
+	title := fs.String("title", "Event Title", "event title")
+	description := fs.String("description", "Event Description", "event description")
+	timeRange := fs.String("timeRange", "", "time range (e.g., 9:00AM-5:00PM)")
+	date := fs.String("date", defaultDate(), "date in MM-DD-YYYY format (default: tomorrow)")
+
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	parsedDate, err := parseDateFlag(*date)
+	if err != nil {
+		return fmt.Errorf("invalid date %q: %w", *date, err)
+	}
+
+	allDay := *timeRange == ""
+	var start, end time.Time
+
+	if !allDay {
+		start, end, err = parseTimeRange(*timeRange)
+		if err != nil {
+			return fmt.Errorf("invalid time range %q: %w", *timeRange, err)
+		}
+		start = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(),
+			start.Hour(), start.Minute(), 0, 0, time.Local)
+		end = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(),
+			end.Hour(), end.Minute(), 0, 0, time.Local)
+	} else {
+		start = parsedDate
+		end = parsedDate.AddDate(0, 0, 1)
+	}
+
+	fmt.Println("\nEvent Details:")
+	fmt.Printf("  Title:       %s\n", *title)
+	fmt.Printf("  Description: %s\n", *description)
+	fmt.Printf("  Date:        %s\n", parsedDate.Format("Monday, January 2, 2006"))
+	if allDay {
+		fmt.Println("  Time:        All day")
+	} else {
+		fmt.Printf("  Time:        %s - %s\n", start.Format("3:04 PM"), end.Format("3:04 PM"))
+	}
+	fmt.Println()
+
+	if !confirmAction("Proceed? [y/N] ") {
+		fmt.Println("Cancelled.")
+		return nil
+	}
+
+	cfg, err := ensureConfigured()
 	if err != nil {
 		return err
 	}
-	fmt.Println("schedule event: not yet implemented")
+
+	switch cfg.Provider {
+	case "google":
+		g := google.New()
+		if err := g.Book(*title, *description, start, end, allDay); err != nil {
+			return fmt.Errorf("failed to book event: %w", err)
+		}
+	default:
+		return fmt.Errorf("unknown provider: %s", cfg.Provider)
+	}
+
+	fmt.Printf("Successfully booked %q\n", *title)
 	return nil
+}
+
+func runScheduleEventHelp() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Usage: time-broker schedule event [flags]\n\n")
+	fmt.Fprint(w, "Schedule a new event on your calendar.\n\n")
+	fmt.Fprint(w, "Flags:\n")
+	fmt.Fprint(w, "  --title string\tEvent title (default \"Event Title\")\n")
+	fmt.Fprint(w, "  --description string\tEvent description (default \"Event Description\")\n")
+	fmt.Fprint(w, "  --timeRange string\tTime range in H:MMAM-H:MMPM format (default: all day)\n")
+	fmt.Fprint(w, "  --date string\t\tDate in MM-DD-YYYY format (default: tomorrow)\n\n")
+	fmt.Fprint(w, "Examples:\n")
+	fmt.Fprint(w, "  time-broker schedule event --title \"Team Meeting\" --timeRange \"9:00AM-5:00PM\"\n")
+	fmt.Fprint(w, "  time-broker schedule event --title \"Holiday\" --date \"12-25-2026\"\n")
+	fmt.Fprint(w, "  time-broker schedule event --title \"Focus Time\" --timeRange \"2:00PM-4:00PM\" --date \"07-15-2026\"\n")
+	w.Flush()
+}
+
+func parseTimeRange(s string) (start, end time.Time, err error) {
+	parts := strings.SplitN(s, "-", 2)
+	if len(parts) != 2 {
+		return time.Time{}, time.Time{}, fmt.Errorf("expected format H:MMAM-H:MMPM")
+	}
+
+	start, err = time.Parse(timeFormat, strings.TrimSpace(parts[0]))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid start time %q: %w", parts[0], err)
+	}
+
+	end, err = time.Parse(timeFormat, strings.TrimSpace(parts[1]))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid end time %q: %w", parts[1], err)
+	}
+
+	return start, end, nil
+}
+
+func parseDateFlag(s string) (time.Time, error) {
+	return time.Parse(dateFormat, s)
+}
+
+func defaultDate() string {
+	return time.Now().AddDate(0, 0, 1).Format(dateFormat)
+}
+
+func confirmAction(prompt string) bool {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	response, _ := reader.ReadString('\n')
+	response = strings.TrimSpace(strings.ToLower(response))
+	return response == "y" || response == "yes"
 }
 
 func runScheduleCancel() error {
@@ -463,6 +589,72 @@ func downloadAndUpdate(version string) error {
 		return fmt.Errorf("failed to replace binary at %s: %w", currentBinary, err)
 	}
 
+	return nil
+}
+
+func runUninstall() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to find home directory: %w", err)
+	}
+
+	dataDir := filepath.Join(home, ".time-broker")
+
+	// Determine symlink directories to check, matching install.sh logic.
+	linkDirs := []string{}
+	localBin := filepath.Join(home, ".local", "bin")
+	if _, err := os.Stat(localBin); err == nil {
+		linkDirs = append(linkDirs, localBin)
+	}
+	linkDirs = append(linkDirs, "/usr/local/bin")
+
+	binNames := []string{"time-broker", "tb"}
+	var symlinksToRemove []string
+
+	for _, dir := range linkDirs {
+		for _, name := range binNames {
+			path := filepath.Join(dir, name)
+			link, err := os.Readlink(path)
+			if err != nil {
+				continue
+			}
+			// Only remove symlinks that point into our data directory.
+			if strings.Contains(link, dataDir) || strings.HasPrefix(link, dataDir) {
+				symlinksToRemove = append(symlinksToRemove, path)
+			}
+		}
+	}
+
+	fmt.Println("The following will be removed:")
+	fmt.Printf("  Directory: %s\n", dataDir)
+	if len(symlinksToRemove) > 0 {
+		for _, s := range symlinksToRemove {
+			fmt.Printf("  Symlink:   %s\n", s)
+		}
+	}
+	fmt.Println()
+
+	if !confirmAction("Proceed with uninstall? [y/N] ") {
+		fmt.Println("Uninstall cancelled.")
+		return nil
+	}
+
+	// Remove symlinks.
+	for _, s := range symlinksToRemove {
+		if err := os.Remove(s); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not remove %s: %v\n", s, err)
+		} else {
+			fmt.Printf("Removed %s\n", s)
+		}
+	}
+
+	// Remove data directory.
+	if err := os.RemoveAll(dataDir); err != nil {
+		return fmt.Errorf("failed to remove %s: %w", dataDir, err)
+	}
+	fmt.Printf("Removed %s\n", dataDir)
+
+	fmt.Println("time-broker has been uninstalled.")
 	return nil
 }
 
