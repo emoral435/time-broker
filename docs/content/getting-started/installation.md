@@ -26,7 +26,12 @@ platform:
 
 ## Uninstall
 
-To uninstall, simply just remove where the binary is located, typically at your `$HOME/.time-broker/bin` folder:
+To remove time-broker, run:
+
 ```sh
-rm -rf "($HOME)/.time-broker"
+time-broker uninstall
 ```
+
+This will prompt you for confirmation and then remove the installed binaries,
+configuration directory (`~/.time-broker/`), and any symlinks that were created
+during installation.
