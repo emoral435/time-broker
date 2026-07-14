@@ -45,10 +45,12 @@ After installing, use `time-broker` or the shorthand `tb` to view the setup wiza
 
 ## Uninstall
 
-To uninstall, simply just remove where the binary is located, typically at your `$HOME/.time-broker/bin` folder:
+To uninstall, run:
 ```sh
-rm -rf "($HOME)/.time-broker"
+time-broker uninstall
 ```
+
+This will remove the binary, configuration, tokens, and any symlinks created by the installer.
 
 ## How it works
 Upon installation, you can use `time-broker` to configure your calendar provider and additional personal settings.

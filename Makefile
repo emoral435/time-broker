@@ -1,3 +1,7 @@
+# Load Google Calendar credentials from .env if present.
+# These are baked into the binary via ldflags at build time.
+# The binary also checks GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+# environment variables at runtime as a fallback.
 ifneq (,$(wildcard .env))
 include .env
 endif
