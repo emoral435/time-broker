@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -35,9 +36,10 @@ const (
 )
 
 type Provider struct {
-	config  *oauth2.Config
-	token   *oauth2.Token
-	service *calendar.Service
+	config   *oauth2.Config
+	token    *oauth2.Token
+	service  *calendar.Service
+	endpoint string
 }
 
 func New() *Provider {
@@ -63,7 +65,7 @@ func New() *Provider {
 	tok, err := config.LoadToken()
 	if err == nil && tok != nil {
 		p.token = tok
-		p.createService()
+		_ = p.createService()
 	}
 
 	return p
@@ -73,9 +75,52 @@ func (g *Provider) Name() string {
 	return ProviderName
 }
 
+func (g *Provider) EnsureAuthenticated() error {
+	if g.token == nil {
+		return fmt.Errorf("authentication required; run 'time-broker auth' to authenticate with your calendar provider")
+	}
+
+	if g.service == nil {
+		if err := g.createService(); err != nil {
+			return fmt.Errorf("failed to initialize calendar service: %w", err)
+		}
+	}
+
+	if err := g.validateToken(); err != nil {
+		if g.token.RefreshToken != "" {
+			if refreshErr := g.refreshToken(); refreshErr != nil {
+				return fmt.Errorf("token validation failed and refresh failed (%v); run 'time-broker auth' to re-authenticate", err)
+			}
+			if err := g.createService(); err != nil {
+				return fmt.Errorf("failed to re-initialize calendar service: %w", err)
+			}
+			if err := g.validateToken(); err != nil {
+				return fmt.Errorf("token validation failed after refresh: %w; run 'time-broker auth' to re-authenticate", err)
+			}
+			return nil
+		}
+		return fmt.Errorf("token validation failed: %w; run 'time-broker auth' to re-authenticate", err)
+	}
+
+	return nil
+}
+
+func (g *Provider) refreshToken() error {
+	ctx := context.Background()
+	ts := g.config.TokenSource(ctx, g.token)
+	tok, err := ts.Token()
+	if err != nil {
+		return fmt.Errorf("refresh token: %w", err)
+	}
+	g.token = tok
+	return config.SaveToken(tok)
+}
+
 func (g *Provider) Auth() error {
-	if g.token != nil && g.token.Valid() {
-		return nil
+	if g.token != nil && g.service != nil {
+		if err := g.validateToken(); err == nil {
+			return nil
+		}
 	}
 
 	if g.config.ClientID == "" || g.config.ClientSecret == "" {
@@ -135,7 +180,12 @@ func (g *Provider) Auth() error {
 		if err := config.SaveToken(tok); err != nil {
 			return fmt.Errorf("save token error: %w", err)
 		}
-		g.createService()
+		if err := g.createService(); err != nil {
+			return fmt.Errorf("authentication succeeded but failed to initialize calendar service: %w", err)
+		}
+		if err := g.validateToken(); err != nil {
+			return fmt.Errorf("authentication succeeded but token validation failed: %w; run 'time-broker auth' again", err)
+		}
 		return nil
 	case err := <-errChan:
 		return err
@@ -145,20 +195,53 @@ func (g *Provider) Auth() error {
 }
 
 func (g *Provider) FreeSlots(day time.Time, minDuration time.Duration) ([]provider.Slot, error) {
-	if g.service == nil {
-		return nil, fmt.Errorf("not authenticated; run 'time-broker auth'")
+	if err := g.EnsureAuthenticated(); err != nil {
+		return nil, err
 	}
 	return nil, fmt.Errorf("free: not yet implemented")
 }
 
-func (g *Provider) Book(title string, start, end time.Time) error {
-	if g.service == nil {
-		return fmt.Errorf("not authenticated; run 'time-broker auth'")
+func (g *Provider) Book(title, description string, start, end time.Time, allDay bool) error {
+	if err := g.EnsureAuthenticated(); err != nil {
+		return err
 	}
-	return fmt.Errorf("book: not yet implemented")
+
+	event := &calendar.Event{
+		Summary:     title,
+		Description: description,
+	}
+
+	if allDay {
+		event.Start = &calendar.EventDateTime{
+			Date: start.Format("2006-01-02"),
+		}
+		event.End = &calendar.EventDateTime{
+			Date: end.Format("2006-01-02"),
+		}
+	} else {
+		event.Start = &calendar.EventDateTime{
+			DateTime: start.Format(time.RFC3339),
+			TimeZone: resolveTimezone(start),
+		}
+		event.End = &calendar.EventDateTime{
+			DateTime: end.Format(time.RFC3339),
+			TimeZone: resolveTimezone(end),
+		}
+	}
+
+	if g.service.Events == nil {
+		return fmt.Errorf("calendar service not fully initialized")
+	}
+
+	_, err := g.service.Events.Insert("primary", event).Do()
+	if err != nil {
+		return fmt.Errorf("failed to create event: %w", err)
+	}
+
+	return nil
 }
 
-func (g *Provider) createService(opts ...option.ClientOption) {
+func (g *Provider) createService(opts ...option.ClientOption) error {
 	ctx := context.Background()
 	ts := g.config.TokenSource(ctx, g.token)
 	saving := &saveTokenSource{
@@ -166,11 +249,29 @@ func (g *Provider) createService(opts ...option.ClientOption) {
 	}
 	client := oauth2.NewClient(ctx, saving)
 	allOpts := append([]option.ClientOption{option.WithHTTPClient(client)}, opts...)
+	if g.endpoint != "" {
+		allOpts = append(allOpts, option.WithEndpoint(g.endpoint))
+	}
 	srv, err := calendar.NewService(ctx, allOpts...)
 	if err != nil {
-		return
+		return fmt.Errorf("create calendar service: %w", err)
 	}
 	g.service = srv
+	return nil
+}
+
+func (g *Provider) validateToken() error {
+	if g.service == nil {
+		return fmt.Errorf("calendar service not initialized")
+	}
+	if g.service.CalendarList == nil {
+		return fmt.Errorf("calendar service not fully configured")
+	}
+	_, err := g.service.CalendarList.List().MaxResults(1).Do()
+	if err != nil {
+		return fmt.Errorf("calendar API: %w", err)
+	}
+	return nil
 }
 
 type saveTokenSource struct {
@@ -205,4 +306,46 @@ var openURL = func(url string) error {
 	default:
 		return fmt.Errorf("unsupported OS platform: %s", runtime.GOOS)
 	}
+}
+
+func resolveTimezone(t time.Time) string {
+	loc := t.Location()
+	if loc != time.Local {
+		return loc.String()
+	}
+
+	if tz := os.Getenv("TZ"); tz != "" {
+		if _, err := time.LoadLocation(tz); err == nil {
+			return tz
+		}
+	}
+
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		if name, ok := timezoneFromEtcLocaltime(); ok {
+			return name
+		}
+	}
+
+	_, offset := t.Zone()
+	sign := "+"
+	if offset < 0 {
+		sign = "-"
+		offset = -offset
+	}
+	hours := offset / 3600
+	minutes := (offset % 3600) / 60
+	return fmt.Sprintf("%s%02d:%02d", sign, hours, minutes)
+}
+
+var timezoneFromEtcLocaltime = func() (string, bool) {
+	link, err := os.Readlink("/etc/localtime")
+	if err != nil {
+		return "", false
+	}
+	const prefix = "zoneinfo/"
+	idx := strings.Index(link, prefix)
+	if idx < 0 {
+		return "", false
+	}
+	return link[idx+len(prefix):], true
 }

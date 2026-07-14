@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/emoral435/time-broker/internal/config"
 )
@@ -17,6 +18,8 @@ const (
 	testUnknownCmd = "foobar"
 	testVersion    = "1.0.0"
 	testEvent      = "event"
+	testInvalid    = "invalid"
+	testDateFlag   = "--date"
 )
 
 func captureStdout(f func()) string {
@@ -172,9 +175,16 @@ func TestRunScheduleNotConfigured(t *testing.T) {
 	}
 	t.Cleanup(func() { runSetupWizardFn = oldWizard })
 
-	err := run([]string{schedule, testEvent})
-	if err == nil {
-		t.Fatal("expected error when not configured")
+	got := captureStdout(func() {
+		if err := run([]string{schedule, testEvent}); err != nil {
+			t.Errorf("run() unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(got, "Event Details") {
+		t.Errorf("expected event details output, got: %s", got)
+	}
+	if !strings.Contains(got, "Cancelled") {
+		t.Errorf("expected 'Cancelled' in output, got: %s", got)
 	}
 }
 
@@ -381,5 +391,243 @@ func TestRunConfigHelp(t *testing.T) {
 	})
 	if !strings.Contains(got, "Usage: time-broker config <subcommand>") {
 		t.Errorf("expected config help text, got: %s", got)
+	}
+}
+
+func TestRunScheduleEventHelp(t *testing.T) {
+	got := captureStdout(func() {
+		if err := run([]string{schedule, testEvent, helpAsStr}); err != nil {
+			t.Errorf("run() unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(got, "Usage: time-broker schedule event [flags]") {
+		t.Errorf("expected schedule event help text, got: %s", got)
+	}
+	if !strings.Contains(got, "--title") {
+		t.Errorf("expected '--title' in help text, got: %s", got)
+	}
+	if !strings.Contains(got, "--description") {
+		t.Errorf("expected '--description' in help text, got: %s", got)
+	}
+	if !strings.Contains(got, "--timeRange") {
+		t.Errorf("expected '--timeRange' in help text, got: %s", got)
+	}
+	if !strings.Contains(got, "--date") {
+		t.Errorf("expected '--date' in help text, got: %s", got)
+	}
+}
+
+func TestParseTimeRange(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+		startH  int
+		startM  int
+		endH    int
+		endM    int
+	}{
+		{
+			name:    "valid range",
+			input:   "9:00AM-5:00PM",
+			wantErr: false,
+			startH:  9, startM: 0,
+			endH: 17, endM: 0,
+		},
+		{
+			name:    "valid range same period",
+			input:   "2:00PM-4:00PM",
+			wantErr: false,
+			startH:  14, startM: 0,
+			endH: 16, endM: 0,
+		},
+		{
+			name:    "valid range with minutes",
+			input:   "9:30AM-11:15AM",
+			wantErr: false,
+			startH:  9, startM: 30,
+			endH: 11, endM: 15,
+		},
+		{
+			name:    "no dash",
+			input:   "9:00AM",
+			wantErr: true,
+		},
+		{
+			name:    "missing AM/PM",
+			input:   "9:00-5:00PM",
+			wantErr: true,
+		},
+		{
+			name:    "invalid format",
+			input:   testInvalid,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			start, end, err := parseTimeRange(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("parseTimeRange(%q) expected error, got nil", tt.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseTimeRange(%q) unexpected error: %v", tt.input, err)
+			}
+			if start.Hour() != tt.startH || start.Minute() != tt.startM {
+				t.Errorf("start = %d:%d, want %d:%d", start.Hour(), start.Minute(), tt.startH, tt.startM)
+			}
+			if end.Hour() != tt.endH || end.Minute() != tt.endM {
+				t.Errorf("end = %d:%d, want %d:%d", end.Hour(), end.Minute(), tt.endH, tt.endM)
+			}
+		})
+	}
+}
+
+func TestParseDateFlag(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+		month   time.Month
+		day     int
+		year    int
+	}{
+		{
+			name:    "valid date",
+			input:   "07-14-2026",
+			wantErr: false,
+			month:   time.July,
+			day:     14,
+			year:    2026,
+		},
+		{
+			name:    "valid date january",
+			input:   "01-01-2026",
+			wantErr: false,
+			month:   time.January,
+			day:     1,
+			year:    2026,
+		},
+		{
+			name:    "invalid format",
+			input:   "2026-07-14",
+			wantErr: true,
+		},
+		{
+			name:    "invalid date",
+			input:   "13-01-2026",
+			wantErr: true,
+		},
+		{
+			name:    "invalid day",
+			input:   "07-32-2026",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := parseDateFlag(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("parseDateFlag(%q) expected error, got nil", tt.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseDateFlag(%q) unexpected error: %v", tt.input, err)
+			}
+			if d.Month() != tt.month {
+				t.Errorf("month = %v, want %v", d.Month(), tt.month)
+			}
+			if d.Day() != tt.day {
+				t.Errorf("day = %d, want %d", d.Day(), tt.day)
+			}
+			if d.Year() != tt.year {
+				t.Errorf("year = %d, want %d", d.Year(), tt.year)
+			}
+		})
+	}
+}
+
+func TestDefaultDate(t *testing.T) {
+	got := defaultDate()
+	expected := time.Now().AddDate(0, 0, 1).Format(dateFormat)
+	if got != expected {
+		t.Errorf("defaultDate() = %q, want %q", got, expected)
+	}
+}
+
+func TestRunScheduleEventDisplaysDetails(t *testing.T) {
+	got := captureStdout(func() {
+		if err := run([]string{schedule, testEvent,
+			"--title", "Test Meeting",
+			"--description", "Test Description",
+			testDateFlag, "07-14-2026",
+			"--timeRange", "9:00AM-5:00PM",
+		}); err != nil {
+			t.Errorf("run() unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(got, "Event Details") {
+		t.Errorf("expected 'Event Details' in output, got: %s", got)
+	}
+	if !strings.Contains(got, "Test Meeting") {
+		t.Errorf("expected 'Test Meeting' in output, got: %s", got)
+	}
+	if !strings.Contains(got, "Test Description") {
+		t.Errorf("expected 'Test Description' in output, got: %s", got)
+	}
+	if !strings.Contains(got, "9:00 AM - 5:00 PM") {
+		t.Errorf("expected '9:00 AM - 5:00 PM' in output, got: %s", got)
+	}
+	if !strings.Contains(got, "Tuesday, July 14, 2026") {
+		t.Errorf("expected 'Tuesday, July 14, 2026' in output, got: %s", got)
+	}
+}
+
+func TestRunScheduleEventAllDay(t *testing.T) {
+	got := captureStdout(func() {
+		if err := run([]string{schedule, testEvent,
+			"--title", "Holiday",
+			testDateFlag, "12-25-2026",
+		}); err != nil {
+			t.Errorf("run() unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(got, "All day") {
+		t.Errorf("expected 'All day' in output, got: %s", got)
+	}
+	if !strings.Contains(got, "Holiday") {
+		t.Errorf("expected 'Holiday' in output, got: %s", got)
+	}
+}
+
+func TestRunScheduleEventInvalidTimeRange(t *testing.T) {
+	err := run([]string{schedule, testEvent, "--timeRange", testInvalid})
+	if err == nil {
+		t.Fatal("expected error for invalid time range")
+	}
+	if !strings.Contains(err.Error(), "invalid time range") {
+		t.Errorf("error = %q; want 'invalid time range'", err)
+	}
+}
+
+func TestRunScheduleEventInvalidDate(t *testing.T) {
+	err := run([]string{schedule, testEvent, testDateFlag, testInvalid})
+	if err == nil {
+		t.Fatal("expected error for invalid date")
+	}
+	if !strings.Contains(err.Error(), "invalid date") {
+		t.Errorf("error = %q; want 'invalid date'", err)
 	}
 }
