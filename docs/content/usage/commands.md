@@ -86,9 +86,80 @@ View events and availability on your calendar.
 **Subcommands:**
 
 - `time-broker view help` - Show view subcommands
-- `time-broker view event` - View a specific event
+- `time-broker view event` - View a specific event by name (fuzzy match)
 - `time-broker view day` - View a specific day's schedule
 - `time-broker view availability` - View your availability
+
+### view day
+
+View all events for a specific day, ordered earliest to latest.
+
+```shell
+time-broker view day              # prompts for date
+time-broker view day 01-31-2027   # direct date input
+```
+
+Date format: `MM-DD-YYYY`
+
+**Output:**
+
+```
+* 9:00AM, Team Standup, Weekly sync
+* 2:00PM, Dentist, Routine checkup
+
+Timezone: America/New_York
+```
+
+### view availability
+
+View your free time over a range of days.
+
+```shell
+time-broker view availability
+time-broker view availability --range 3
+time-broker view availability --startDay 01-15-2027 --startTime 9:00AM --endTime 5:00PM
+```
+
+**Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--range` | Number of days ahead (1-7) | 1 |
+| `--startDay` | Start date in `MM-DD-YYYY` format | today |
+| `--startTime` | Start of time window (e.g. `9:00AM`) | 9:00AM |
+| `--endTime` | End of time window (e.g. `5:00PM`) | 5:00PM |
+
+**Output:**
+
+```
+* Monday 01-12-2026, [9:00AM - 10:30AM], [2:00PM - 3:00PM]
+* Tuesday 01-13-2026, [10:00AM - 11:00AM]
+```
+
+### view event
+
+Search for an event by name using fuzzy matching (Levenshtein distance, 80% threshold).
+
+```shell
+time-broker view event --name "team meeting"
+time-broker view event --name "standup" --day 01-31-2027
+```
+
+**Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--name` | Search term to match against event names (required) | - |
+| `--day` | Day to search in `MM-DD-YYYY` format | today |
+
+**Output:**
+
+```
+* Team Standup
+  Time: 9:00AM - 9:30AM
+  Description: Weekly team sync
+  Location: Conference Room A
+```
 
 ## version
 

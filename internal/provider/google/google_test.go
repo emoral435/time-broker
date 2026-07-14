@@ -128,7 +128,8 @@ func TestFreeSlotsNotAuthenticated(t *testing.T) {
 			ClientSecret: testScrtStr,
 		},
 	}
-	_, err := p.FreeSlots(time.Now(), time.Hour)
+	now := time.Now()
+	_, err := p.FreeSlots(now, now.Add(time.Hour), time.Hour)
 	if err == nil {
 		t.Fatal("FreeSlots() expected error when not authenticated")
 	}
@@ -197,38 +198,8 @@ func TestBookExpiredTokenWithRefresh(t *testing.T) {
 	}
 }
 
-func TestFreeSlotsNotYetImplemented(t *testing.T) {
-	mockServer := newMockCalendarServer(t)
-
-	p := &Provider{
-		config: &oauth2.Config{
-			ClientID:     testIDStr,
-			ClientSecret: testScrtStr,
-			Endpoint: oauth2.Endpoint{
-				TokenURL: mockServer.URL + "/token",
-			},
-		},
-		token: &oauth2.Token{
-			AccessToken: validTokenStr,
-			TokenType:   bearerAsStr,
-			Expiry:      time.Now().Add(time.Hour),
-		},
-	}
-	if err := p.createService(option.WithEndpoint(mockServer.URL)); err != nil {
-		t.Fatalf("createService() error: %v", err)
-	}
-	_, err := p.FreeSlots(time.Now(), time.Hour)
-	if err == nil {
-		t.Fatal("FreeSlots() expected 'not yet implemented'")
-	}
-	if !strings.Contains(err.Error(), "not yet implemented") {
-		t.Errorf("FreeSlots() error = %q; want 'not yet implemented'", err)
-	}
-}
-
 func TestBookWithService(t *testing.T) {
 	mockServer := newMockCalendarServer(t)
-
 	p := &Provider{
 		config: &oauth2.Config{
 			ClientID:     testIDStr,
