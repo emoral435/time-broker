@@ -43,6 +43,34 @@ Manage events on your calendar.
 - `time-broker schedule cancel` - Cancel an existing event
 - `time-broker schedule update` - Update an existing event
 
+### schedule event
+
+Schedule a new event on your calendar.
+
+```shell
+time-broker schedule event --title "Team Meeting" --timeRange "9:00AM-5:00PM"
+```
+
+**Flags:**
+
+- `--title string` - Event title (default: "Event Title")
+- `--description string` - Event description (default: "Event Description")
+- `--timeRange string` - Time range in `H:MMAM-H:MMPM` format (default: all day)
+- `--date string` - Date in `MM-DD-YYYY` format (default: tomorrow)
+
+**Examples:**
+
+```shell
+# Schedule a timed event
+time-broker schedule event --title "Team Meeting" --timeRange "9:00AM-5:00PM"
+
+# Schedule an all-day event
+time-broker schedule event --title "Holiday" --date "12-25-2026"
+
+# Schedule with all flags
+time-broker schedule event --title "Focus Time" --description "Deep work session" --timeRange "2:00PM-4:00PM" --date "07-15-2026"
+```
+
 ## update
 
 Update time-broker to the latest version.

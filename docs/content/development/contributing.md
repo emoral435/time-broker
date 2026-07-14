@@ -6,7 +6,8 @@ weight: 2
 ## Prerequisites
 
 - Go 1.25 or later
-- A calendar provider API key (for integration tests)
+- Node.js and npm (for frontend work)
+- A Google Calendar OAuth client ID and secret (for local testing)
 
 ## Setup
 
@@ -16,6 +17,58 @@ cd time-broker
 go mod download
 make setup     # installs lefthook and registers precommit hooks
 make build     # verify the project compiles
+```
+
+## Local Development
+
+### Google Calendar credentials
+
+time-broker needs Google Calendar API credentials to run. There are two ways to
+provide them during local development:
+
+**Option 1: `.env` file (recommended for local builds)**
+
+Copy the example file and fill in your credentials:
+
+```shell
+cp .env.example .env
+# Edit .env with your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+```
+
+`make build` reads `.env` and bakes the values into the binary via linker
+flags. You only need to re-run `make build` if you change the `.env` file.
+
+**Option 2: Shell environment variables (no rebuild needed)**
+
+Export the variables in your current shell, then run the binary directly:
+
+```shell
+export GOOGLE_CLIENT_ID="your-client-id"
+export GOOGLE_CLIENT_SECRET="your-client-secret"
+make run
+```
+
+At runtime, the binary checks for `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` environment variables as a fallback when no build-time
+values are present.
+
+### Obtaining credentials
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. Create an OAuth 2.0 Client ID (type: Web Application).
+3. Add `http://localhost:8085/callback` as an authorized redirect URI.
+4. Copy the Client ID and Client Secret into your `.env` file or export them.
+
+### Running
+
+```shell
+make build && make run
+```
+
+Or, if you exported the environment variables directly:
+
+```shell
+make run
 ```
 
 ## Precommit hooks
