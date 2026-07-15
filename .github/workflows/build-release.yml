@@ -1,8 +1,9 @@
 name: Build Release Binaries
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -17,16 +18,10 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm ci
-          npm run build
-
       - name: Set version variables
         id: vars
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -65,8 +60,12 @@ jobs:
           cd dist
           sha256sum *.tar.gz > checksums.txt
 
-      - name: Upload release assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ steps.vars.outputs.tag }}" dist/*.tar.gz dist/checksums.txt --clobber
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
