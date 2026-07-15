@@ -1,0 +1,72 @@
+name: Build Release Binaries
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Set version variables
+        id: vars
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build binaries
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          VERSION="${{ steps.vars.outputs.version }}"
+
+          XFLAGS="-X main.Version=${VERSION}"
+
+          mkdir -p dist
+
+          GOOS=darwin GOARCH=arm64 go build -ldflags "$XFLAGS" -o dist/time-broker ./cmd/time-broker/
+          tar -czf "dist/time-broker-${TAG}-darwin-arm64.tar.gz" -C dist time-broker
+          rm dist/time-broker
+
+          GOOS=darwin GOARCH=amd64 go build -ldflags "$XFLAGS" -o dist/time-broker ./cmd/time-broker/
+          tar -czf "dist/time-broker-${TAG}-darwin-amd64.tar.gz" -C dist time-broker
+          rm dist/time-broker
+
+          GOOS=linux GOARCH=arm64 go build -ldflags "$XFLAGS" -o dist/time-broker ./cmd/time-broker/
+          tar -czf "dist/time-broker-${TAG}-linux-arm64.tar.gz" -C dist time-broker
+          rm dist/time-broker
+
+          GOOS=linux GOARCH=amd64 go build -ldflags "$XFLAGS" -o dist/time-broker ./cmd/time-broker/
+          tar -czf "dist/time-broker-${TAG}-linux-amd64.tar.gz" -C dist time-broker
+          rm dist/time-broker
+
+          GOOS=windows GOARCH=amd64 go build -ldflags "$XFLAGS" -o dist/time-broker.exe ./cmd/time-broker/
+          tar -czf "dist/time-broker-${TAG}-windows-amd64.tar.gz" -C dist time-broker.exe
+          rm dist/time-broker.exe
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Upload release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.vars.outputs.tag }}" dist/*.tar.gz dist/checksums.txt --clobber

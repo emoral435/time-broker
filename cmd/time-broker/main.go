@@ -51,7 +51,7 @@ func loadVersionFromFile() {
 	if Version != devAsStr {
 		return
 	}
-	data, err := os.ReadFile("VERSION")
+	data, err := os.ReadFile("version.txt")
 	if err != nil {
 		return
 	}

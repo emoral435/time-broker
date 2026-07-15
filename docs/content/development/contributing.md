@@ -110,11 +110,34 @@ Common development commands are available via the Makefile:
 
 ## Submitting Changes
 
+This repository follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and uses squash merges exclusively.
+
+### Commit messages
+
+All commit messages must follow the Conventional Commits format:
+
+```
+<type>: <description>
+
+[optional body]
+```
+
+Common types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`.
+
+Examples:
+- `feat: add Fantastical calendar provider`
+- `fix: resolve token refresh race condition`
+- `docs: update installation instructions`
+
+### Pull requests
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Run `make test` and `make lint` to verify locally
 5. Submit a pull request
+
+Pull requests are squash-merged into `main`. This keeps the commit history linear and clean.
 
 ## Documentation
 
@@ -130,12 +153,11 @@ Then open http://localhost:1313.
 
 ## Releasing
 
-1. Update the `VERSION` file at the project root to the new version (without `v` prefix, e.g. `0.2.0`).
-2. Commit the change and open a pull request.
-3. Merge the PR to `main`.
+Releases are managed by [release-please](https://github.com/googleapis/release-please). There is no manual version bump step.
 
-That's it. Merging a change to `VERSION` on `main` triggers the
-[release](https://github.com/emoral435/time-broker/actions/workflows/release.yml)
-workflow, which creates the tag, builds binaries for all platforms, generates
-checksums, syncs the frontend version, and creates a GitHub Release with
-auto-generated release notes.
+When conventional commits land on `main`, release-please automatically opens a Release PR that includes:
+- A version bump based on the commit types (`fix` -> patch, `feat` -> minor, `feat!` or breaking change -> major)
+- Updated entries in `CHANGELOG.md`
+- An updated `version.txt`
+
+Merging the Release PR triggers the release workflow, which creates the git tag, builds binaries for all platforms, generates checksums, and publishes a GitHub Release.

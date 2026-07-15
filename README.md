@@ -1,9 +1,9 @@
 <h1 align="center"><code>time-broker</code></h1>
 <p align="center">
-  <a href="https://github.com/emoral435/time-broker/actions/workflows/release.yml"
+  <a href="https://github.com/emoral435/time-broker/actions/workflows/release-please.yml"
     ><img
       alt="Release"
-      src="https://img.shields.io/github/actions/workflow/status/emoral435/time-broker/release.yml?style=flat-square&label=release"
+      src="https://img.shields.io/github/actions/workflow/status/emoral435/time-broker/release-please.yml?style=flat-square&label=release"
   /></a>
   <a href="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue?style=flat-square"
     ><img
@@ -110,6 +110,14 @@ make setup
 ```
 
 This installs lefthook via Homebrew (if missing) and registers the git hooks.
+
+## Contributing
+
+This repository uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for commit messages (e.g. `feat:`, `fix:`, `chore:`). All pull requests are squash-merged into `main`.
+
+Releases are managed by [release-please](https://github.com/googleapis/release-please). When conventional commits land on `main`, release-please opens a Release PR with a version bump and changelog entries. Merging that PR creates the git tag and GitHub Release.
+
+For full contributing guidelines, see the [contributing documentation](https://emoral435.github.io/time-broker/development/contributing/).
 
 ## Star History
 
