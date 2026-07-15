@@ -153,11 +153,14 @@ Then open http://localhost:1313.
 
 ## Releasing
 
-Releases are managed by [release-please](https://github.com/googleapis/release-please). There is no manual version bump step.
+Releases are built with [GoReleaser](https://goreleaser.com). To create a release:
 
-When conventional commits land on `main`, release-please automatically opens a Release PR that includes:
-- A version bump based on the commit types (`fix` -> patch, `feat` -> minor, `feat!` or breaking change -> major)
-- Updated entries in `CHANGELOG.md`
-- An updated `version.txt`
+1. Determine the next version (follow semver: `v1.2.0`, `v1.2.1`, `v2.0.0`, etc.)
+2. Tag the commit and push:
 
-Merging the Release PR triggers the release workflow, which creates the git tag, builds binaries for all platforms, generates checksums, and publishes a GitHub Release.
+```shell
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The [goreleaser workflow](https://github.com/emoral435/time-broker/actions/workflows/goreleaser.yml) triggers on the tag push, builds binaries for all platforms (darwin/linux amd64+arm64, windows amd64), generates checksums, and publishes a GitHub Release with all assets.
