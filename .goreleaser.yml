@@ -9,7 +9,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X main.Version={{.Version}}
+      - -s -w -X main.Version={{.Version}} -X github.com/emoral435/time-broker/internal/provider/google.ClientID={{.Env.GOOGLE_CLIENT_ID}} -X github.com/emoral435/time-broker/internal/provider/google.ClientSecret={{.Env.GOOGLE_CLIENT_SECRET}}
     goos:
       - darwin
       - linux
