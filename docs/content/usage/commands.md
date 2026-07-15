@@ -56,7 +56,7 @@ time-broker schedule event --title "Team Meeting" --timeRange "9:00AM-5:00PM"
 - `--title string` - Event title (default: "Event Title")
 - `--description string` - Event description (default: "Event Description")
 - `--timeRange string` - Time range in `H:MMAM-H:MMPM` format (default: all day)
-- `--date string` - Date in `MM-DD-YYYY` format (default: tomorrow)
+- `--date string` - Date in `MM-DD-YYYY`, `MM/DD/YYYY`, or `M/D/YYYY` format (default: tomorrow)
 
 **Examples:**
 
@@ -68,7 +68,7 @@ time-broker schedule event --title "Team Meeting" --timeRange "9:00AM-5:00PM"
 time-broker schedule event --title "Holiday" --date "12-25-2026"
 
 # Schedule with all flags
-time-broker schedule event --title "Focus Time" --description "Deep work session" --timeRange "2:00PM-4:00PM" --date "07-15-2026"
+time-broker schedule event --title "Focus Time" --description "Deep work session" --timeRange "2:00PM-4:00PM" --date "7/15/2026"
 ```
 
 ## update
@@ -95,11 +95,12 @@ View events and availability on your calendar.
 View all events for a specific day, ordered earliest to latest.
 
 ```shell
-time-broker view day              # prompts for date
-time-broker view day 01-31-2027   # direct date input
+time-broker view day                    # shows today's events
+time-broker view day --date 01-31-2027  # specific date
+time-broker view day --date 1/31/2027   # M/D/YYYY also works
 ```
 
-Date format: `MM-DD-YYYY`
+Date formats: `MM-DD-YYYY`, `MM/DD/YYYY`, or `M/D/YYYY`
 
 **Output:**
 
@@ -118,6 +119,7 @@ View your free time over a range of days.
 time-broker view availability
 time-broker view availability --range 3
 time-broker view availability --startDay 01-15-2027 --startTime 9:00AM --endTime 5:00PM
+time-broker view availability --startDay 7/15/2027 --range 3
 ```
 
 **Flags:**
@@ -125,7 +127,7 @@ time-broker view availability --startDay 01-15-2027 --startTime 9:00AM --endTime
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--range` | Number of days ahead (1-7) | 1 |
-| `--startDay` | Start date in `MM-DD-YYYY` format | today |
+| `--startDay` | Start date in `MM-DD-YYYY`, `MM/DD/YYYY`, or `M/D/YYYY` format | today |
 | `--startTime` | Start of time window (e.g. `9:00AM`) | 9:00AM |
 | `--endTime` | End of time window (e.g. `5:00PM`) | 5:00PM |
 
@@ -134,6 +136,8 @@ time-broker view availability --startDay 01-15-2027 --startTime 9:00AM --endTime
 ```
 * Monday 01-12-2026, [9:00AM - 10:30AM], [2:00PM - 3:00PM]
 * Tuesday 01-13-2026, [10:00AM - 11:00AM]
+
+Timezone: America/New_York
 ```
 
 ### view event
@@ -142,7 +146,7 @@ Search for an event by name using fuzzy matching (Levenshtein distance, 80% thre
 
 ```shell
 time-broker view event --name "team meeting"
-time-broker view event --name "standup" --day 01-31-2027
+time-broker view event --name "standup" --day 1/31/2027
 ```
 
 **Flags:**
@@ -150,7 +154,7 @@ time-broker view event --name "standup" --day 01-31-2027
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--name` | Search term to match against event names (required) | - |
-| `--day` | Day to search in `MM-DD-YYYY` format | today |
+| `--day` | Day to search in `MM-DD-YYYY`, `MM/DD/YYYY`, or `M/D/YYYY` format | today |
 
 **Output:**
 

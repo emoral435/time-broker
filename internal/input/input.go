@@ -7,15 +7,21 @@ import (
 	"time"
 )
 
-const dateLayout = "01-02-2006"
+var dateLayouts = []string{
+	"01-02-2006",
+	"01/02/2006",
+	"1/2/2006",
+}
 
 func ParseDate(s string) (time.Time, error) {
 	s = strings.TrimSpace(s)
-	t, err := time.Parse(dateLayout, s)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid date %q: use MM-DD-YYYY format", s)
+	for _, layout := range dateLayouts {
+		t, err := time.ParseInLocation(layout, s, time.Local)
+		if err == nil {
+			return t, nil
+		}
 	}
-	return t, nil
+	return time.Time{}, fmt.Errorf("invalid date %q: use MM-DD-YYYY, MM/DD/YYYY, or M/D/YYYY", s)
 }
 
 func ParseTime(s string) (time.Duration, error) {

@@ -11,12 +11,16 @@ func TestParseDate(t *testing.T) {
 		want  time.Time
 		err   bool
 	}{
-		{"01-31-2027", time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC), false},
-		{"12-25-2026", time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC), false},
-		{"01-01-2000", time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{"01-31-2027", time.Date(2027, 1, 31, 0, 0, 0, 0, time.Local), false},
+		{"12-25-2026", time.Date(2026, 12, 25, 0, 0, 0, 0, time.Local), false},
+		{"01-01-2000", time.Date(2000, 1, 1, 0, 0, 0, 0, time.Local), false},
+		{"01/31/2027", time.Date(2027, 1, 31, 0, 0, 0, 0, time.Local), false},
+		{"12/25/2026", time.Date(2026, 12, 25, 0, 0, 0, 0, time.Local), false},
+		{"1/31/2027", time.Date(2027, 1, 31, 0, 0, 0, 0, time.Local), false},
+		{"7/4/2026", time.Date(2026, 7, 4, 0, 0, 0, 0, time.Local), false},
+		{"12/1/2026", time.Date(2026, 12, 1, 0, 0, 0, 0, time.Local), false},
 		{"2027-01-31", time.Time{}, true},
 		{"1-31-2027", time.Time{}, true},
-		{"01/31/2027", time.Time{}, true},
 		{"invalid", time.Time{}, true},
 		{"", time.Time{}, true},
 	}
@@ -40,9 +44,38 @@ func TestParseDateWithSpaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseDate with spaces unexpected error: %v", err)
 	}
-	want := time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)
+	want := time.Date(2027, 1, 31, 0, 0, 0, 0, time.Local)
 	if !got.Equal(want) {
 		t.Errorf("ParseDate(\"  01-31-2027  \") = %v, want %v", got, want)
+	}
+}
+
+func TestParseDateFormats(t *testing.T) {
+	got, err := ParseDate("1/15/2026")
+	if err != nil {
+		t.Fatalf("ParseDate M/D/YYYY unexpected error: %v", err)
+	}
+	want := time.Date(2026, 1, 15, 0, 0, 0, 0, time.Local)
+	if !got.Equal(want) {
+		t.Errorf("ParseDate(\"1/15/2026\") = %v, want %v", got, want)
+	}
+
+	got, err = ParseDate("01/15/2026")
+	if err != nil {
+		t.Fatalf("ParseDate MM/DD/YYYY unexpected error: %v", err)
+	}
+	if !got.Equal(want) {
+		t.Errorf("ParseDate(\"01/15/2026\") = %v, want %v", got, want)
+	}
+}
+
+func TestParseDateReturnsLocalTimezone(t *testing.T) {
+	got, err := ParseDate("07-14-2026")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Location() != time.Local {
+		t.Errorf("ParseDate location = %v, want %v", got.Location(), time.Local)
 	}
 }
 
