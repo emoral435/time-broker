@@ -6,7 +6,7 @@ ifneq (,$(wildcard .env))
 include .env
 endif
 
-VERSION := $(shell cat VERSION)
+VERSION := $(shell cat version.txt)
 XFLAGS := -X main.Version=$(VERSION)
 
 ifdef GOOGLE_CLIENT_ID
@@ -25,7 +25,7 @@ frontend-dev:
 	cd frontend && npm run dev
 
 frontend-build:
-	cd frontend && npm run build
+	cd frontend && npm ci && npm run build
 
 run:
 	./bin/time-broker

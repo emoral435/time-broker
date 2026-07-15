@@ -134,8 +134,8 @@ func TestInitReadsVersionFile(t *testing.T) {
 		}
 	}()
 
-	if err := os.WriteFile("VERSION", []byte("2.0.0-rc1\n"), 0644); err != nil {
-		t.Fatalf("write VERSION file: %v", err)
+	if err := os.WriteFile("version.txt", []byte("2.0.0-rc1\n"), 0644); err != nil {
+		t.Fatalf("write version.txt file: %v", err)
 	}
 
 	loadVersionFromFile()
