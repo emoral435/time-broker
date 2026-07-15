@@ -19,6 +19,8 @@
 
 <h3 align="center">Get back your time. Use a managed broker, hooked up to your calendar provider.</h3>
 
+![showcase](showcase.gif)
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/emoral435/time-broker/main/demo.gif" alt="time-broker demo" width="800" />
 </p>
