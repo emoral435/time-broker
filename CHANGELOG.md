@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/emoral435/time-broker/compare/v1.0.1...v1.0.2) (2026-07-15)
+
+
+### Bug Fixes
+
+* hotfixes release-please to release versions for build-workflow ([#34](https://github.com/emoral435/time-broker/issues/34)) ([075cc8c](https://github.com/emoral435/time-broker/commit/075cc8ceb5a26336eaedc7ddf2a835ddea80977e))
+
 ## [1.0.1](https://github.com/emoral435/time-broker/compare/v1.0.0...v1.0.1) (2026-07-15)
 
 
