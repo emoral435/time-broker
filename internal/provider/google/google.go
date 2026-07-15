@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -194,11 +195,61 @@ func (g *Provider) Auth() error {
 	}
 }
 
-func (g *Provider) FreeSlots(day time.Time, minDuration time.Duration) ([]provider.Slot, error) {
+func (g *Provider) FreeSlots(start, end time.Time, minDuration time.Duration) ([]provider.Slot, error) {
 	if err := g.EnsureAuthenticated(); err != nil {
 		return nil, err
 	}
-	return nil, fmt.Errorf("free: not yet implemented")
+
+	events, err := g.service.Events.List("primary").
+		TimeMin(start.Format(time.RFC3339)).
+		TimeMax(end.Format(time.RFC3339)).
+		SingleEvents(true).
+		OrderBy("startTime").
+		Do()
+	if err != nil {
+		return nil, fmt.Errorf("list events: %w", err)
+	}
+
+	type busySlot struct {
+		start time.Time
+		end   time.Time
+	}
+
+	var busy []busySlot
+	for _, ev := range events.Items {
+		s, _ := parseEventDateTime(ev.Start)
+		e, _ := parseEventDateTime(ev.End)
+		if s.IsZero() || e.IsZero() {
+			continue
+		}
+		if s.Before(start) {
+			s = start
+		}
+		if e.After(end) {
+			e = end
+		}
+		busy = append(busy, busySlot{start: s, end: e})
+	}
+
+	sort.Slice(busy, func(i, j int) bool {
+		return busy[i].start.Before(busy[j].start)
+	})
+
+	var free []provider.Slot
+	cursor := start
+	for _, b := range busy {
+		if b.start.After(cursor) && b.start.Sub(cursor) >= minDuration {
+			free = append(free, provider.Slot{Start: cursor, End: b.start})
+		}
+		if b.end.After(cursor) {
+			cursor = b.end
+		}
+	}
+	if cursor.Before(end) && end.Sub(cursor) >= minDuration {
+		free = append(free, provider.Slot{Start: cursor, End: end})
+	}
+
+	return free, nil
 }
 
 func (g *Provider) Book(title, description string, start, end time.Time, allDay bool) error {
@@ -239,6 +290,85 @@ func (g *Provider) Book(title, description string, start, end time.Time, allDay 
 	}
 
 	return nil
+}
+
+func (g *Provider) EventsForDay(day time.Time) ([]provider.Event, error) {
+	if g.service == nil {
+		return nil, fmt.Errorf("not authenticated; run 'time-broker auth'")
+	}
+
+	day = day.In(time.Local)
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
+	end := start.Add(24 * time.Hour)
+
+	events, err := g.service.Events.List("primary").
+		TimeMin(start.Format(time.RFC3339)).
+		TimeMax(end.Format(time.RFC3339)).
+		SingleEvents(true).
+		OrderBy("startTime").
+		Do()
+	if err != nil {
+		return nil, fmt.Errorf("list events: %w", err)
+	}
+
+	var result []provider.Event
+	for _, ev := range events.Items {
+		s, allDay := parseEventDateTime(ev.Start)
+		e, _ := parseEventDateTime(ev.End)
+
+		result = append(result, provider.Event{
+			Title:       ev.Summary,
+			Description: ev.Description,
+			Location:    ev.Location,
+			Start:       s,
+			End:         e,
+			AllDay:      allDay,
+		})
+	}
+
+	return result, nil
+}
+
+func (g *Provider) Timezone() *time.Location {
+	if g.service == nil {
+		return time.Local
+	}
+
+	cal, err := g.service.CalendarList.Get("primary").Do()
+	if err != nil {
+		return time.Local
+	}
+
+	loc, err := time.LoadLocation(cal.TimeZone)
+	if err != nil {
+		return time.Local
+	}
+
+	return loc
+}
+
+func parseEventDateTime(edt *calendar.EventDateTime) (time.Time, bool) {
+	if edt == nil {
+		return time.Time{}, false
+	}
+
+	if edt.Date != "" {
+		t, err := time.Parse("2006-01-02", edt.Date)
+		if err != nil {
+			return time.Time{}, true
+		}
+		return t, true
+	}
+
+	if edt.DateTime != "" {
+		t, err := time.Parse(time.RFC3339, edt.DateTime)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t, false
+	}
+
+	return time.Time{}, false
 }
 
 func (g *Provider) createService(opts ...option.ClientOption) error {

@@ -31,6 +31,10 @@ Style rules:
 - New features should include unit tests; integration tests go behind `testing.Short()`.
 - Documentation: note if docs were updated
 
+## Command Features
+Whenever there is a command change, make sure to always update the README and the docs appropriately, always remembering to update the usage section of both docs.
+Furthermore, each command should have a help output to it, and each command when ran without arguments should show its help output. Whenever a command receives input that is not recognized, print that help command as well.
+
 ## Precommit Hooks
 
 This project uses lefthook for precommit hooks. Run `make setup` or `lefthook install`

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/emoral435/time-broker/internal/config"
+	"github.com/emoral435/time-broker/internal/input"
 )
 
 const (
@@ -477,11 +478,15 @@ func TestParseTimeRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseTimeRange(%q) unexpected error: %v", tt.input, err)
 			}
-			if start.Hour() != tt.startH || start.Minute() != tt.startM {
-				t.Errorf("start = %d:%d, want %d:%d", start.Hour(), start.Minute(), tt.startH, tt.startM)
+			startH := int(start.Hours())
+			startM := int(start.Minutes()) % 60
+			if startH != tt.startH || startM != tt.startM {
+				t.Errorf("start = %d:%d, want %d:%d", startH, startM, tt.startH, tt.startM)
 			}
-			if end.Hour() != tt.endH || end.Minute() != tt.endM {
-				t.Errorf("end = %d:%d, want %d:%d", end.Hour(), end.Minute(), tt.endH, tt.endM)
+			endH := int(end.Hours())
+			endM := int(end.Minutes()) % 60
+			if endH != tt.endH || endM != tt.endM {
+				t.Errorf("end = %d:%d, want %d:%d", endH, endM, tt.endH, tt.endM)
 			}
 		})
 	}
@@ -513,6 +518,22 @@ func TestParseDateFlag(t *testing.T) {
 			year:    2026,
 		},
 		{
+			name:    "valid date M/D/YYYY",
+			input:   "7/14/2026",
+			wantErr: false,
+			month:   time.July,
+			day:     14,
+			year:    2026,
+		},
+		{
+			name:    "valid date MM/DD/YYYY",
+			input:   "01/01/2026",
+			wantErr: false,
+			month:   time.January,
+			day:     1,
+			year:    2026,
+		},
+		{
 			name:    "invalid format",
 			input:   "2026-07-14",
 			wantErr: true,
@@ -536,15 +557,15 @@ func TestParseDateFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d, err := parseDateFlag(tt.input)
+			d, err := input.ParseDate(tt.input)
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("parseDateFlag(%q) expected error, got nil", tt.input)
+					t.Errorf("ParseDate(%q) expected error, got nil", tt.input)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("parseDateFlag(%q) unexpected error: %v", tt.input, err)
+				t.Fatalf("ParseDate(%q) unexpected error: %v", tt.input, err)
 			}
 			if d.Month() != tt.month {
 				t.Errorf("month = %v, want %v", d.Month(), tt.month)

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -18,20 +19,22 @@ import (
 	"github.com/charmbracelet/huh"
 
 	"github.com/emoral435/time-broker/internal/config"
+	"github.com/emoral435/time-broker/internal/input"
+	"github.com/emoral435/time-broker/internal/provider"
 	"github.com/emoral435/time-broker/internal/provider/google"
 )
 
 const (
-	helpAsStr = "help"
-	devAsStr  = "dev"
-	cfgAsStr  = "config"
-	event     = "event"
-	schedule  = "schedule"
-	update    = "update"
-	view      = "view"
+	helpAsStr      = "help"
+	devAsStr       = "dev"
+	cfgAsStr       = "config"
+	event          = "event"
+	googleProvider = "google"
+	schedule       = "schedule"
+	update         = "update"
+	view           = "view"
 
 	dateFormat = "01-02-2006"
-	timeFormat = "3:04PM"
 )
 
 var Version = devAsStr
@@ -143,7 +146,7 @@ func runAuth() error {
 	}
 
 	switch cfg.Provider {
-	case "google":
+	case googleProvider:
 		g := google.New()
 		if err := g.Auth(); err != nil {
 			return fmt.Errorf("authentication failed: %w", err)
@@ -255,6 +258,15 @@ func ensureConfigured() (*config.Config, error) {
 	return cfg, nil
 }
 
+func newProvider(cfg *config.Config) (provider.Provider, error) {
+	switch cfg.Provider {
+	case googleProvider:
+		return google.New(), nil
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", cfg.Provider)
+	}
+}
+
 func runSchedule(args []string) error {
 	if len(args) == 0 {
 		runScheduleHelp()
@@ -308,23 +320,25 @@ func runScheduleEvent(args []string) error {
 		return err
 	}
 
-	parsedDate, err := parseDateFlag(*date)
+	parsedDate, err := input.ParseDate(*date)
 	if err != nil {
-		return fmt.Errorf("invalid date %q: %w", *date, err)
+		return err
 	}
 
 	allDay := *timeRange == ""
 	var start, end time.Time
 
 	if !allDay {
-		start, end, err = parseTimeRange(*timeRange)
+		startDur, endDur, err := parseTimeRange(*timeRange)
 		if err != nil {
 			return fmt.Errorf("invalid time range %q: %w", *timeRange, err)
 		}
+		startH, startM := int(startDur.Hours()), int(startDur.Minutes())%60
+		endH, endM := int(endDur.Hours()), int(endDur.Minutes())%60
 		start = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(),
-			start.Hour(), start.Minute(), 0, 0, time.Local)
+			startH, startM, 0, 0, time.Local)
 		end = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(),
-			end.Hour(), end.Minute(), 0, 0, time.Local)
+			endH, endM, 0, 0, time.Local)
 	} else {
 		start = parsedDate
 		end = parsedDate.AddDate(0, 0, 1)
@@ -352,7 +366,7 @@ func runScheduleEvent(args []string) error {
 	}
 
 	switch cfg.Provider {
-	case "google":
+	case googleProvider:
 		g := google.New()
 		if err := g.Book(*title, *description, start, end, allDay); err != nil {
 			return fmt.Errorf("failed to book event: %w", err)
@@ -373,35 +387,31 @@ func runScheduleEventHelp() {
 	fmt.Fprint(w, "  --title string\tEvent title (default \"Event Title\")\n")
 	fmt.Fprint(w, "  --description string\tEvent description (default \"Event Description\")\n")
 	fmt.Fprint(w, "  --timeRange string\tTime range in H:MMAM-H:MMPM format (default: all day)\n")
-	fmt.Fprint(w, "  --date string\t\tDate in MM-DD-YYYY format (default: tomorrow)\n\n")
+	fmt.Fprint(w, "  --date string\t\tDate in MM-DD-YYYY, MM/DD/YYYY, or M/D/YYYY format (default: tomorrow)\n\n")
 	fmt.Fprint(w, "Examples:\n")
 	fmt.Fprint(w, "  time-broker schedule event --title \"Team Meeting\" --timeRange \"9:00AM-5:00PM\"\n")
 	fmt.Fprint(w, "  time-broker schedule event --title \"Holiday\" --date \"12-25-2026\"\n")
-	fmt.Fprint(w, "  time-broker schedule event --title \"Focus Time\" --timeRange \"2:00PM-4:00PM\" --date \"07-15-2026\"\n")
+	fmt.Fprint(w, "  time-broker schedule event --title \"Focus Time\" --timeRange \"2:00PM-4:00PM\" --date \"7/15/2026\"\n")
 	w.Flush()
 }
 
-func parseTimeRange(s string) (start, end time.Time, err error) {
+func parseTimeRange(s string) (time.Duration, time.Duration, error) {
 	parts := strings.SplitN(s, "-", 2)
 	if len(parts) != 2 {
-		return time.Time{}, time.Time{}, fmt.Errorf("expected format H:MMAM-H:MMPM")
+		return 0, 0, fmt.Errorf("expected format H:MMAM-H:MMPM")
 	}
 
-	start, err = time.Parse(timeFormat, strings.TrimSpace(parts[0]))
+	start, err := input.ParseTime(parts[0])
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid start time %q: %w", parts[0], err)
+		return 0, 0, fmt.Errorf("invalid start time %q: %w", parts[0], err)
 	}
 
-	end, err = time.Parse(timeFormat, strings.TrimSpace(parts[1]))
+	end, err := input.ParseTime(parts[1])
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid end time %q: %w", parts[1], err)
+		return 0, 0, fmt.Errorf("invalid end time %q: %w", parts[1], err)
 	}
 
 	return start, end, nil
-}
-
-func parseDateFlag(s string) (time.Time, error) {
-	return time.Parse(dateFormat, s)
 }
 
 func defaultDate() string {
@@ -445,11 +455,11 @@ func runView(args []string) error {
 		runViewHelp()
 		return nil
 	case event:
-		return runViewEvent()
+		return runViewEvent(args[1:])
 	case "day":
 		return runViewDay(args[1:])
 	case "availability":
-		return runViewAvailability()
+		return runViewAvailability(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown view subcommand: %s\n\n", args[0])
 		runViewHelp()
@@ -463,40 +473,322 @@ func runViewHelp() {
 	fmt.Fprint(w, "View events and availability on your calendar.\n\n")
 	fmt.Fprint(w, "Subcommands:\n")
 	fmt.Fprint(w, "  help\tShow this help message\n")
-	fmt.Fprint(w, "  event\tView a specific event\n")
+	fmt.Fprint(w, "  event\tView a specific event by name\n")
 	fmt.Fprint(w, "  day\tView a specific day's schedule\n")
-	fmt.Fprint(w, "  availability\tView your availability\n")
+	fmt.Fprint(w, "  availability\tView your availability\n\n")
+	fmt.Fprint(w, "Run 'time-broker view <subcommand> help' for more details.\n")
 	w.Flush()
 }
 
-func runViewEvent() error {
-	_, err := ensureConfigured()
+func runViewDayHelp() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Usage: time-broker view day [--date DATE]\n\n")
+	fmt.Fprint(w, "View all events for a specific day.\n\n")
+	fmt.Fprint(w, "If no date is provided, shows today's events.\n")
+	fmt.Fprint(w, "Date formats: MM-DD-YYYY, MM/DD/YYYY, or M/D/YYYY (e.g. 01-31-2027, 1/31/2027)\n\n")
+	fmt.Fprint(w, "Output:\n")
+	fmt.Fprint(w, "  * Event start time, Event name, Event description\n")
+	fmt.Fprint(w, "  ...\n")
+	fmt.Fprint(w, "  Timezone: [calendar timezone]\n")
+	w.Flush()
+}
+
+func runViewAvailabilityHelp() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Usage: time-broker view availability [flags]\n\n")
+	fmt.Fprint(w, "View your free time over a range of days.\n\n")
+	fmt.Fprint(w, "Flags:\n")
+	fmt.Fprint(w, "  --range\tNumber of days ahead (1-7, default 1)\n")
+	fmt.Fprint(w, "  --startDay\tStart date in MM-DD-YYYY, MM/DD/YYYY, or M/D/YYYY format (default today)\n")
+	fmt.Fprint(w, "  --startTime\tStart of time window, e.g. 9:00AM (default 9:00AM)\n")
+	fmt.Fprint(w, "  --endTime\tEnd of time window, e.g. 5:00PM (default 5:00PM)\n\n")
+	fmt.Fprint(w, "Output:\n")
+	fmt.Fprint(w, "  * Day, [block1_free], [block2_free], ...\n")
+	fmt.Fprint(w, "  Timezone: [calendar timezone]\n")
+	w.Flush()
+}
+
+func runViewEventHelp() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprint(w, "Usage: time-broker view event --name <text> [--day DATE]\n\n")
+	fmt.Fprint(w, "Search for an event by name using fuzzy matching.\n\n")
+	fmt.Fprint(w, "Flags:\n")
+	fmt.Fprint(w, "  --name\tSearch term to match against event names (required)\n")
+	fmt.Fprint(w, "  --day\tDay to search in MM-DD-YYYY, MM/DD/YYYY, or M/D/YYYY format (default today)\n\n")
+	fmt.Fprint(w, "Matches events whose names are at least 80%% similar (Levenshtein distance).\n")
+	w.Flush()
+}
+
+func runViewEvent(args []string) error {
+	if len(args) == 0 {
+		runViewEventHelp()
+		return nil
+	}
+
+	if args[0] == helpAsStr {
+		runViewEventHelp()
+		return nil
+	}
+
+	var name string
+	var day time.Time
+	var daySet bool
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--name":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--name requires a value")
+			}
+			name = args[i+1]
+			i++
+		case "--day":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--day requires a value")
+			}
+			d, err := input.ParseDate(args[i+1])
+			if err != nil {
+				return err
+			}
+			day = d
+			daySet = true
+			i++
+		default:
+			return fmt.Errorf("unknown flag: %s", args[i])
+		}
+	}
+
+	if name == "" {
+		return fmt.Errorf("--name is required")
+	}
+
+	if !daySet {
+		day = time.Now()
+	}
+
+	cfg, err := ensureConfigured()
 	if err != nil {
 		return err
 	}
-	fmt.Println("view event: not yet implemented")
+
+	prov, err := newProvider(cfg)
+	if err != nil {
+		return err
+	}
+
+	if err := prov.EnsureAuthenticated(); err != nil {
+		return err
+	}
+
+	events, err := prov.EventsForDay(day)
+	if err != nil {
+		return fmt.Errorf("fetch events: %w", err)
+	}
+
+	var matches []provider.Event
+	for _, ev := range events {
+		if input.FuzzyMatch(name, ev.Title, 0.8) {
+			matches = append(matches, ev)
+		}
+	}
+
+	if len(matches) == 0 {
+		fmt.Printf("No events matching %q found on %s\n", name, day.Format("01-02-2006"))
+		return nil
+	}
+
+	for _, ev := range matches {
+		fmt.Printf("* %s\n", ev.Title)
+		if !ev.Start.IsZero() {
+			if ev.AllDay {
+				fmt.Printf("  Time: All day\n")
+			} else {
+				fmt.Printf("  Time: %s - %s\n", ev.Start.Format("3:04PM"), ev.End.Format("3:04PM"))
+			}
+		}
+		if ev.Description != "" {
+			fmt.Printf("  Description: %s\n", ev.Description)
+		}
+		if ev.Location != "" {
+			fmt.Printf("  Location: %s\n", ev.Location)
+		}
+		fmt.Println()
+	}
+
 	return nil
 }
 
 func runViewDay(args []string) error {
-	_, err := ensureConfigured()
+	if len(args) > 0 && args[0] == helpAsStr {
+		runViewDayHelp()
+		return nil
+	}
+
+	day := time.Now()
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--date":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--date requires a value")
+			}
+			var err error
+			day, err = input.ParseDate(args[i+1])
+			if err != nil {
+				return err
+			}
+			i++
+		default:
+			return fmt.Errorf("unknown flag: %s", args[i])
+		}
+	}
+
+	cfg, err := ensureConfigured()
 	if err != nil {
 		return err
 	}
-	if len(args) == 0 {
-		fmt.Println("view day: not yet implemented (defaults to today)")
-	} else {
-		fmt.Printf("view day: not yet implemented (date: %s)\n", args[0])
+
+	prov, err := newProvider(cfg)
+	if err != nil {
+		return err
 	}
+
+	if err := prov.EnsureAuthenticated(); err != nil {
+		return err
+	}
+
+	events, err := prov.EventsForDay(day)
+	if err != nil {
+		return fmt.Errorf("fetch events: %w", err)
+	}
+
+	if len(events) == 0 {
+		fmt.Printf("No events on %s\n", day.Format("01-02-2006"))
+		return nil
+	}
+
+	for _, ev := range events {
+		if ev.AllDay {
+			fmt.Printf("* All day, %s", ev.Title)
+		} else {
+			fmt.Printf("* %s, %s", ev.Start.Format("3:04PM"), ev.Title)
+		}
+		if ev.Description != "" {
+			fmt.Printf(", %s", ev.Description)
+		}
+		fmt.Println()
+	}
+
+	fmt.Printf("\nTimezone: %s\n", prov.Timezone())
+
 	return nil
 }
 
-func runViewAvailability() error {
-	_, err := ensureConfigured()
+func runViewAvailability(args []string) error {
+	if len(args) == 0 {
+		runViewAvailabilityHelp()
+		return nil
+	}
+
+	if args[0] == helpAsStr {
+		runViewAvailabilityHelp()
+		return nil
+	}
+
+	daysAhead := 1
+	startDay := time.Now()
+	startTime := 9 * time.Hour
+	endTime := 17 * time.Hour
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--range":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--range requires a value")
+			}
+			n, err := strconv.Atoi(args[i+1])
+			if err != nil || n < 1 || n > 7 {
+				return fmt.Errorf("--range must be between 1 and 7")
+			}
+			daysAhead = n
+			i++
+		case "--startDay":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--startDay requires a value")
+			}
+			d, err := input.ParseDate(args[i+1])
+			if err != nil {
+				return err
+			}
+			startDay = d
+			i++
+		case "--startTime":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--startTime requires a value")
+			}
+			d, err := input.ParseTime(args[i+1])
+			if err != nil {
+				return err
+			}
+			startTime = d
+			i++
+		case "--endTime":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--endTime requires a value")
+			}
+			d, err := input.ParseTime(args[i+1])
+			if err != nil {
+				return err
+			}
+			endTime = d
+			i++
+		default:
+			return fmt.Errorf("unknown flag: %s", args[i])
+		}
+	}
+
+	if startTime >= endTime {
+		return fmt.Errorf("--startTime must be before --endTime")
+	}
+
+	cfg, err := ensureConfigured()
 	if err != nil {
 		return err
 	}
-	fmt.Println("view availability: not yet implemented")
+
+	prov, err := newProvider(cfg)
+	if err != nil {
+		return err
+	}
+
+	if err := prov.EnsureAuthenticated(); err != nil {
+		return err
+	}
+
+	for i := 0; i < daysAhead; i++ {
+		day := startDay.AddDate(0, 0, i)
+		dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.Local)
+		windowStart := dayStart.Add(startTime)
+		windowEnd := dayStart.Add(endTime)
+
+		free, err := prov.FreeSlots(windowStart, windowEnd, 0)
+		if err != nil {
+			return fmt.Errorf("fetch availability for %s: %w", day.Format("01-02-2006"), err)
+		}
+
+		fmt.Printf("* %s", day.Format("Monday 01-02-2006"))
+		if len(free) == 0 {
+			fmt.Printf(", [no free slots]")
+		} else {
+			for _, slot := range free {
+				fmt.Printf(", [%s - %s]", slot.Start.Format("3:04PM"), slot.End.Format("3:04PM"))
+			}
+		}
+		fmt.Println()
+	}
+
+	fmt.Printf("\nTimezone: %s\n", prov.Timezone())
+
 	return nil
 }
 
@@ -688,7 +980,7 @@ func runSetupWizard() (*config.Config, error) {
 			huh.NewSelect[string]().
 				Title("Calendar Provider").
 				Description("Choose your calendar service").
-				Options(huh.NewOption("Google Calendar", "google")).
+				Options(huh.NewOption("Google Calendar", googleProvider)).
 				Value(&provider),
 			huh.NewSelect[string]().
 				Title("Week Start Day").
